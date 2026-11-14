@@ -962,11 +962,7 @@ export default function Landing() {
           </nav>
         </div>
         <div className="lp-foot-legal">
-          <p>
-            Made with <a href="https://react.dev/" target="_blank" rel="noreferrer">React</a> and{' '}
-            <a href="https://threejs.org/" target="_blank" rel="noreferrer">three.js</a>. Type: Instrument Serif, Martian Mono and Schibsted Grotesk via Google
-            Fonts.
-          </p>
+          <p>&copy; 2026 Flown. Free to play.</p>
           <p>Not a NASA product. No NASA logos are used.</p>
         </div>
         <p className="lp-foot-word" aria-hidden="true">Flown</p>
