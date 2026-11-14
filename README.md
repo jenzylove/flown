@@ -61,7 +61,7 @@ brief ─▶ hangar (parts, instruments, processes, live budget)
       ─▶ case file (real story + sources)  ─▶ refly same seed  ─▶ Lesson Sky (catch rate)
 ```
 
-- `src/engine` is pure TypeScript with tests: catalog, budget evaluation, 28 rules that map design choices to real lessons, a seeded flight simulator with crises, catch scoring, share codes and the calibration check.
+- `src/engine` is pure TypeScript with tests: catalog, budget evaluation, 27 rules that map design choices to real lessons, a seeded flight simulator with crises, catch scoring, share codes and the calibration check.
 - `src/data` holds the sourced lessons and the NSSDCA spacecraft facts.
 - `src/ui` and `src/three` render it with React and three.js; the craft is built from your parts and every failure plays on the model.
 
