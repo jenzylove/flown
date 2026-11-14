@@ -1,8 +1,8 @@
 import lessonsData from '../data/lessons.json';
 import nssdcaData from '../data/nssdca.json';
 import {
-  BATTERY_WH, BRIEFS, DOWNLINK_MB, FIXED_COST_SHARE, FUEL_MASS_FACTOR, INSTRUMENTS, NEED_CLASS,
-  PARTS, PROCESS_OPTIONS, PROP_CLASS, STRUCTURE_SHARE,
+  BATTERY_WH, BRIEFS, DIFFICULTY, DOWNLINK_MB, FIXED_COST_SHARE, FUEL_MASS_FACTOR, INSTRUMENTS, LAUNCH_OPTIONS,
+  MAX_PINS, NEED_CLASS, ORBIT_OPTIONS, PARTS, PROCESS_OPTIONS, PROP_CLASS, STRUCTURE_SHARE,
 } from './catalog';
 import { REVIEW_FIXES, RULES, ruleFor, type Ctx, type Effect, type Rule } from './rules';
 import type {
@@ -11,7 +11,12 @@ import type {
 } from './types';
 
 export * from './types';
-export { BRIEFS, PARTS, INSTRUMENTS, PROCESS_OPTIONS, RULES, REVIEW_FIXES };
+export { BRIEFS, PARTS, INSTRUMENTS, PROCESS_OPTIONS, RULES, REVIEW_FIXES, LAUNCH_OPTIONS, ORBIT_OPTIONS, DIFFICULTY, MAX_PINS };
+
+export const launchOf = (d: Design) => LAUNCH_OPTIONS.find(o => o.id === (d.launch ?? 'lv_standard')) ?? LAUNCH_OPTIONS[1];
+export const orbitOptionsFor = (briefId: string) => ORBIT_OPTIONS.filter(o => o.kind === briefById(briefId).kind);
+export const orbitOf = (d: Design) => orbitOptionsFor(d.briefId).find(o => o.id === d.orbit) ?? orbitOptionsFor(d.briefId)[0];
+export const difficultyOf = (d: Design) => DIFFICULTY[d.difficulty ?? 'engineer'];
 
 export const LESSONS = lessonsData as Lesson[];
 export interface RealCraft {
@@ -66,6 +71,9 @@ export function defaultDesign(briefId: string): Design {
     instruments: b.kind === 'telescope' ? ['telescope'] : b.kind === 'lander' ? ['seismometer', 'camera'] : ['camera', 'magnetometer'],
     process: { interfaceCheck: 'ic_spot', deployTest: 'dt_part', faultSim: 'fs_basic', fuelMargin: 'fm_10' },
     fixes: [],
+    launch: 'lv_standard',
+    orbit: ORBIT_OPTIONS.find(o => o.kind === b.kind)!.id,
+    difficulty: 'engineer',
   };
 }
 
@@ -81,8 +89,13 @@ export function evaluate(design: Design): BudgetReport {
   const massKg = Math.round((rawMass + fuelExtra) * (1 + STRUCTURE_SHARE));
 
   const fixes = (design.fixes ?? []).map(f => REVIEW_FIXES[f]).filter(Boolean) as NonNullable<ReviewItem['fix']>[];
+  const lv = launchOf(design);
+  const orb = orbitOf(design);
+  const diff = difficultyOf(design);
+  const budgetM = Math.round(b.budgetM * diff.budgetMult);
+  const massLimitKg = Math.round(b.launchMassLimitKg * lv.massMult);
   const costM = Math.round(
-    b.budgetM * FIXED_COST_SHARE +
+    b.budgetM * (FIXED_COST_SHARE + lv.costShare) +
     parts.reduce((a, p) => a + p.costM, 0) + inst.reduce((a, i) => a + i.costM, 0) +
     procs.reduce((a, p) => a + p.costM, 0) + fixes.reduce((a, f) => a + f.costM, 0),
   );
@@ -98,15 +111,15 @@ export function evaluate(design: Design): BudgetReport {
   const batteryHours = +(batteryWh / Math.max(1, powerUseW)).toFixed(1);
   // orbit periods: Mars ~2 h, Mercury ~12 h, lander night ~12 h of a 24.6 h sol
   const periodH = b.kind === 'lander' ? 24.6 : b.target === 'Mercury' ? 12 : 2;
-  const eclipseHours = +(periodH * b.eclipseFraction).toFixed(1);
+  const eclipseHours = +(periodH * b.eclipseFraction * orb.eclipseMult).toFixed(1);
   const dataMbDay = inst.reduce((a, i) => a + i.dataMbDay, 0);
-  const downlinkMbDay = Math.round((DOWNLINK_MB[design.parts.antenna] ?? 0) * b.linkFactor);
+  const downlinkMbDay = Math.round((DOWNLINK_MB[design.parts.antenna] ?? 0) * b.linkFactor * orb.linkMult);
   const scheduleDays = procs.reduce((a, p) => a + p.scheduleDays, 0) + fixes.reduce((a, f) => a + f.scheduleDays, 0);
 
   const blockers: string[] = [];
   const warnings: string[] = [];
-  if (massKg > b.launchMassLimitKg) blockers.push(`Too heavy: ${massKg} kg, the rocket can send ${b.launchMassLimitKg} kg to ${b.target}.`);
-  if (costM > b.budgetM) blockers.push(`Over budget: $${costM}M of $${b.budgetM}M.`);
+  if (massKg > massLimitKg) blockers.push(`Too heavy: ${massKg} kg dry. On this rocket the mission allows ${massLimitKg} kg dry (a simplified game limit).`);
+  if (costM > budgetM) blockers.push(`Over budget: $${costM}M of $${budgetM}M.`);
   if (powerGenW < powerUseW) blockers.push(`Not enough power at ${b.target}: ${powerGenW} W made, ${powerUseW} W needed.`);
   if (ion && power.powerW * b.sunFactor < 2500 && power.id !== 'rtg') blockers.push('The ion engine needs about 2500 W while thrusting. Your power source cannot feed it.');
   if (ion && power.id === 'rtg') blockers.push('One RTG cannot feed an ion engine.');
@@ -118,9 +131,9 @@ export function evaluate(design: Design): BudgetReport {
   if (design.instruments.includes('seismometer') && b.kind !== 'lander') blockers.push('A seismometer only works on the ground.');
   if (design.instruments.includes('telescope') && b.kind === 'lander') blockers.push('A space telescope does not belong on a lander.');
   if (dataMbDay > downlinkMbDay) warnings.push(`Your instruments make ${dataMbDay} Mb a day but you can send home ${downlinkMbDay}. Some science will never reach Earth.`);
-  if (b.eclipseFraction > 0 && batteryHours < eclipseHours) warnings.push(`The battery lasts ${batteryHours} h; the shadow lasts ${eclipseHours} h.`);
+  if (eclipseHours > 0 && batteryHours < eclipseHours) warnings.push(`The battery lasts ${batteryHours} h; the shadow lasts ${eclipseHours} h.`);
   return {
-    massKg, massLimitKg: b.launchMassLimitKg, costM, budgetM: b.budgetM, powerGenW, powerUseW,
+    massKg, massLimitKg, costM, budgetM, powerGenW, powerUseW,
     batteryHours, eclipseHours, dataMbDay, downlinkMbDay, scheduleDays, blockers, warnings,
   };
 }
@@ -155,13 +168,20 @@ export function applyFixes(design: Design, fixed: string[]): Design {
 /** Which rules would hit this design on this seed (before fixes). Pure, used by the sim and tests. */
 export function wouldTrigger(design: Design, seed: number): Rule[] {
   const c = ctxFor({ ...design, fixes: [] });
-  return RULES.filter(r => roll(seed, r.lessonId) < r.p(c));
+  return RULES.filter(r => roll(seed, r.lessonId) < adjustedP(r, c));
+}
+
+function adjustedP(r: Rule, c: Ctx) {
+  const base = r.p(c);
+  if (base <= 0) return 0;
+  const orbMult = r.phase === 'arrival' ? orbitOf(c.design).arrivalRiskMult : 1;
+  return Math.min(0.95, base * difficultyOf(c.design).riskMult * orbMult);
 }
 
 /** Every real failure this design could suffer, with its chance per flight. */
 export function riskProfile(design: Design) {
   const c = ctxFor({ ...design, fixes: [] });
-  return RULES.map(r => ({ lessonId: r.lessonId, item: r.item, p: r.p(c) })).filter(x => x.p > 0);
+  return RULES.map(r => ({ lessonId: r.lessonId, item: r.item, p: adjustedP(r, c) })).filter(x => x.p > 0);
 }
 
 // ---------- flight ----------
@@ -174,6 +194,7 @@ interface Internal {
   prevented: string[];
   missed: string[];
   falseFlags: string[];
+  seed: number;
 }
 const STATE = new WeakMap<FlightRun, Internal>();
 
@@ -191,9 +212,11 @@ function dayFor(phase: FlightEvent['phase'], b: Brief, seed: number, key: string
 export function startFlight(design: Design, seed: number, flagged: string[], fixed: string[]): FlightRun {
   const b = briefById(design.briefId);
   const hits = wouldTrigger(design, seed);
+  flagged = [...new Set(flagged)].slice(0, MAX_PINS);
+  fixed = fixed.filter(f => flagged.includes(f));
   const fixedSet = new Set(fixed);
   const flagSet = new Set(flagged);
-  const st: Internal = { queue: [], mults: [], lostAtDay: null, triggered: [], caught: [], prevented: [], missed: [], falseFlags: [] };
+  const st: Internal = { queue: [], mults: [], lostAtDay: null, triggered: [], caught: [], prevented: [], missed: [], falseFlags: [], seed };
   const riskItems = new Set(riskProfile(design).map(r => r.item));
   st.falseFlags = flagged.filter(f => !riskItems.has(f));
 
@@ -221,9 +244,15 @@ export function startFlight(design: Design, seed: number, flagged: string[], fix
   return advance(run);
 }
 
-function applyEffect(st: Internal, e: Effect, day: number) {
+function applyEffect(st: Internal, e: Effect, day: number, key = ''): string | undefined {
   if (e.kind === 'lost') st.lostAtDay = day;
   else if (e.kind === 'degrade') st.mults.push(e.mult);
+  else if (e.kind === 'gamble') {
+    const failed = roll(st.seed, `gamble:${key}`) < e.pFail;
+    applyEffect(st, failed ? e.fail : e.ok, day, key);
+    return failed ? e.failText : e.okText;
+  }
+  return undefined;
 }
 
 function advance(run: FlightRun): FlightRun {
@@ -262,8 +291,10 @@ export function resolveCrisis(run: FlightRun, optionId: string): FlightRun {
   const opt = rule.crisis!.options.find(o => o.id === optionId);
   const avail = run.pendingCrisis.options.find(o => o.id === optionId)?.available;
   if (!opt || !avail) return run;
-  applyEffect(st, opt.effect, run.pendingCrisis.day);
-  const events: FlightEvent[] = [...run.events, { day: run.pendingCrisis.day, phase: 'operations', kind: opt.effect.kind === 'lost' ? 'failure' : 'nominal', lessonId: rule.lessonId, text: opt.after }];
+  const lostBefore = st.lostAtDay;
+  const extra = applyEffect(st, opt.effect, run.pendingCrisis.day, rule.lessonId);
+  const bad = st.lostAtDay !== lostBefore || (opt.effect.kind === 'gamble' && extra === opt.effect.failText);
+  const events: FlightEvent[] = [...run.events, { day: run.pendingCrisis.day, phase: 'operations', kind: bad ? 'failure' : 'nominal', lessonId: rule.lessonId, text: extra ? `${opt.after} ${extra}` : opt.after }];
   const next: FlightRun = { ...run, events, pendingCrisis: undefined };
   STATE.set(next, st);
   return advance(next);
@@ -286,9 +317,15 @@ function finish(design: Design, st: Internal): FlightResult {
     frac = st.lostAtDay <= b.arrivalDay ? 0 : (st.lostAtDay - b.arrivalDay) / Math.max(1, b.missionDays - b.arrivalDay);
   }
   const mult = st.mults.reduce((a, m) => a * m, 1);
-  const sciencePct = Math.round(100 * dataRatio * mult * frac);
+  const orb = orbitOf(design);
+  const sciencePct = Math.min(100, Math.round(100 * dataRatio * mult * frac * orb.scienceMult));
+  const notes: string[] = [];
+  if (dataRatio < 0.995) notes.push(`Your antenna could send home ${rep.downlinkMbDay * sendDays} Mb for every ${rep.dataMbDay} Mb your instruments made, so ${Math.round(100 * (1 - dataRatio))}% of the data never reached Earth.`);
+  if (orb.scienceMult !== 1) notes.push(`${orb.name}: ${orb.scienceMult > 1 ? 'more' : 'less'} science than the standard choice (${orb.scienceMult > 1 ? 'plus' : 'minus'} ${Math.abs(Math.round(100 * (orb.scienceMult - 1)))}%).`);
+  if (st.mults.some(m => m < 1)) notes.push(`Real failures and your crisis calls cut the science to ${Math.round(100 * mult)}% of what was possible.`);
+  if (st.lostAtDay !== null) notes.push(st.lostAtDay <= b.arrivalDay ? 'The craft was lost before its science began.' : `The craft was lost on day ${st.lostAtDay}, ${Math.round(100 * frac)}% of the way through the science phase.`);
   const outcome: FlightResult['outcome'] = st.lostAtDay !== null && frac < 0.5 ? 'lost' : sciencePct >= 90 ? 'success' : 'degraded';
-  return { outcome, sciencePct, triggered: st.triggered, caught: st.caught, prevented: st.prevented, missed: st.missed, falseFlags: st.falseFlags };
+  return { outcome, sciencePct, triggered: st.triggered, caught: st.caught, prevented: st.prevented, missed: st.missed, falseFlags: st.falseFlags, notes };
 }
 
 // ---------- daily ----------
@@ -299,10 +336,11 @@ export function dailyBrief(date: Date): { brief: Brief; seed: number } {
 }
 
 /** Catch rate over many runs: caught / (caught + missed). null when nothing could have been caught yet. */
-export function catchRate(results: Pick<FlightResult, 'caught' | 'missed'>[]) {
+export function catchRate(results: (Pick<FlightResult, 'caught' | 'missed'> & { falseFlags?: string[] })[]) {
   const c = results.reduce((a, r) => a + r.caught.length, 0);
   const m = results.reduce((a, r) => a + r.missed.length, 0);
-  return c + m === 0 ? null : c / (c + m);
+  const f = results.reduce((a, r) => a + (r.falseFlags?.length ?? 0), 0);
+  return c + m === 0 ? null : c / (c + m + f);
 }
 
 // ---------- cold open ----------
@@ -351,27 +389,36 @@ export function calibration() {
 /** Compact, URL safe code for a design plus seed, so a friend can fly the same mission. */
 export function encodeShare(design: Design, seed: number): string {
   const d = [design.briefId, ...SLOTS.map(s => design.parts[s]), design.instruments.join('+'),
-    design.process.interfaceCheck, design.process.deployTest, design.process.faultSim, design.process.fuelMargin, String(seed)];
+    design.process.interfaceCheck, design.process.deployTest, design.process.faultSim, design.process.fuelMargin, String(seed),
+    design.launch ?? 'lv_standard', orbitOf(design).id, design.difficulty ?? 'engineer'];
   return d.join('.');
 }
 export function decodeShare(code: string): { design: Design; seed: number } | null {
   const p = code.split('.');
-  if (p.length !== 1 + SLOTS.length + 1 + 4 + 1) return null;
+  const base = 1 + SLOTS.length + 1 + 4 + 1;
+  if (p.length !== base && p.length !== base + 3) return null;
   const [briefId, ...rest] = p;
   if (!BRIEFS.some(b => b.id === briefId)) return null;
   const parts = Object.fromEntries(SLOTS.map((s, i) => [s, rest[i]])) as Design['parts'];
   if (SLOTS.some(s => partById(parts[s])?.slot !== s)) return null;
   const instruments = rest[SLOTS.length] ? rest[SLOTS.length].split('+') : [];
   if (instruments.some(i => !instrumentById(i))) return null;
-  const [ic, dt, fs, fm, seedS] = rest.slice(SLOTS.length + 1);
+  const [ic, dt, fs, fm, seedS, lvS, orbS, diffS] = rest.slice(SLOTS.length + 1);
+  const launch = lvS ?? 'lv_standard';
+  if (!LAUNCH_OPTIONS.some(o => o.id === launch)) return null;
+  const kind = BRIEFS.find(x => x.id === briefId)!.kind;
+  const orbit = orbS ?? ORBIT_OPTIONS.find(o => o.kind === kind)!.id;
+  if (!ORBIT_OPTIONS.some(o => o.id === orbit && o.kind === kind)) return null;
+  const difficulty = (diffS ?? 'engineer') as NonNullable<Design['difficulty']>;
+  if (!(difficulty in DIFFICULTY)) return null;
   const ok = (id: string, pr: string) => PROCESS_OPTIONS.some(o => o.id === id && o.process === pr);
   if (!ok(ic, 'interfaceCheck') || !ok(dt, 'deployTest') || !ok(fs, 'faultSim') || !ok(fm, 'fuelMargin')) return null;
   const seed = Number(seedS);
   if (!Number.isInteger(seed) || seed < 0) return null;
-  return { design: { briefId, parts, instruments, process: { interfaceCheck: ic, deployTest: dt, faultSim: fs, fuelMargin: fm }, fixes: [] }, seed };
+  return { design: { briefId, parts, instruments, process: { interfaceCheck: ic, deployTest: dt, faultSim: fs, fuelMargin: fm }, fixes: [], launch, orbit, difficulty }, seed };
 }
 
 /** Crew score: science that came home, plus a bonus for each real failure caught before launch. */
-export function crewScore(r: FlightResult) {
-  return r.sciencePct + 15 * r.caught.length - 5 * r.missed.length;
+export function crewScore(r: Pick<FlightResult, 'sciencePct' | 'caught' | 'missed'> & { falseFlags?: string[] }) {
+  return r.sciencePct + 15 * r.caught.length - 5 * r.missed.length - 5 * (r.falseFlags?.length ?? 0);
 }

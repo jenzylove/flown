@@ -90,6 +90,35 @@ export interface Design {
   process: Record<ProcessId, string>; // process option id per process
   /** Review item ids the player paid to fix before launch. */
   fixes?: string[];
+  /** Launch vehicle option id (see LAUNCH_OPTIONS). Defaults to 'lv_standard'. */
+  launch?: string;
+  /** Orbit, pass or landing site option id (see ORBIT_OPTIONS). Defaults to the first option for the brief kind. */
+  orbit?: string;
+  difficulty?: Difficulty;
+}
+
+export type Difficulty = 'cadet' | 'engineer' | 'veteran';
+
+export interface LaunchOption {
+  id: string;
+  name: string;
+  /** Multiplies the brief's dry mass allowance. */
+  massMult: number;
+  /** Extra cost as a share of the mission budget (negative = saves money). */
+  costShare: number;
+  blurb: string;
+}
+
+export interface OrbitOption {
+  id: string;
+  kind: Brief['kind'];
+  name: string;
+  eclipseMult: number;
+  linkMult: number;
+  scienceMult: number;
+  /** Multiplies the chance of arrival and landing failures. */
+  arrivalRiskMult: number;
+  blurb: string;
 }
 
 export interface BudgetReport {
@@ -161,6 +190,8 @@ export interface FlightResult {
   prevented: string[];         // caught AND fixed, so the failure never happened
   missed: string[];            // would have triggered, not flagged
   falseFlags: string[];        // flagged review items that carried no real risk
+  /** Plain post mission analysis lines (data that never came home, orbit trade, etc). */
+  notes: string[];
 }
 
 export interface Lesson {

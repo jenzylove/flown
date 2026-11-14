@@ -57,12 +57,12 @@ describe('flight', () => {
     expect(r2.result!.prevented).toContain('galileo-hga-stuck-ribs');
     expect(r2.events.some(e => e.kind === 'save')).toBe(true);
   });
-  it('choosing to burn on Juno valves loses the craft', () => {
+  it('firing on Juno valves is a seeded gamble, never certain loss', () => {
     const d = defaultDesign('jupiter');
     let seed = 0; while (!wouldTrigger(d, seed).some(r => r.lessonId === 'juno-helium-check-valves')) seed++;
     let r = startFlight(d, seed, [], []);
     while (!r.done && r.pendingCrisis?.lessonId !== 'juno-helium-check-valves') r = resolveCrisis(r, r.pendingCrisis!.options.find(o => o.available)!.id);
-    if (!r.done) { r = resolveCrisis(r, 'burn'); expect(r.result!.outcome).toBe('lost'); }
+    if (!r.done) { r = resolveCrisis(r, 'burn'); expect(r.events.some(e => /NASA feared|not worth taking/.test(e.text))).toBe(true); }
   });
   it('unavailable crisis options explain why', () => {
     const d = defaultDesign('planets'); d.parts.attitude = 'wheels_3'; d.parts.power = 'panel_small';
@@ -95,6 +95,29 @@ describe('share', () => {
   });
   it('rejects junk', () => { expect(decodeShare('x.y')).toBeNull(); expect(decodeShare(encodeShare(defaultDesign('pluto'), 1).replace('rtg', 'wheels_3'))).toBeNull(); });
   it('crew score rewards catches', () => {
-    expect(crewScore({ sciencePct: 50, caught: ['a'], missed: [], triggered: [], prevented: [], falseFlags: [], outcome: 'degraded' })).toBe(65);
+    expect(crewScore({ sciencePct: 50, caught: ['a'], missed: [], falseFlags: [] })).toBe(65);
+    expect(crewScore({ sciencePct: 50, caught: ['a'], missed: [], falseFlags: ['x', 'y'] })).toBe(55);
+  });
+});
+
+describe('review limits', () => {
+  it('caps pins and counts wrong pins against the catch rate', () => {
+    const d = defaultDesign('jupiter');
+    let r = startFlight(d, 3, ['part:power','part:battery','part:antenna','part:attitude','part:propulsion','part:computer'], []);
+    while (!r.done) r = resolveCrisis(r, r.pendingCrisis!.options.find(o => o.available)!.id);
+    expect(r.result!.caught.length + r.result!.falseFlags.length).toBeLessThanOrEqual(4);
+    expect(catchRate([{ caught: ['a'], missed: [], falseFlags: ['b', 'c', 'd'] }])).toBeCloseTo(0.25);
+  });
+  it('rocket and orbit change the budget', () => {
+    const d = defaultDesign('mars-orbit');
+    const heavy = evaluate({ ...d, launch: 'lv_heavy' }), std = evaluate(d);
+    expect(heavy.massLimitKg).toBeGreaterThan(std.massLimitKg); expect(heavy.costM).toBeGreaterThan(std.costM);
+    expect(evaluate({ ...d, orbit: 'orb_close' }).eclipseHours).toBeGreaterThan(evaluate({ ...d, orbit: 'orb_wide' }).eclipseHours);
+  });
+  it('downlink shortfall is explained', () => {
+    const d = defaultDesign('jupiter'); d.instruments = ['camera', 'radar'];
+    let r = startFlight(d, 999, [], []);
+    while (!r.done) r = resolveCrisis(r, r.pendingCrisis!.options.find(o => o.available)!.id);
+    expect(r.result!.notes.join(' ')).toMatch(/never reached Earth/);
   });
 });

@@ -1,4 +1,4 @@
-import type { Brief, Instrument, Part, ProcessOption } from './types';
+import type { Brief, Difficulty, Instrument, LaunchOption, OrbitOption, Part, ProcessOption } from './types';
 
 // Part values are simplified teaching values, rounded so the trade offs are felt.
 // They are not engineering specifications. Real spacecraft facts live in src/data/nssdca.json.
@@ -130,3 +130,29 @@ export const BRIEFS: Brief[] = [
 export const FIXED_COST_SHARE = 0.62;
 /** Structure, wiring and cabling as a share of the parts mass. */
 export const STRUCTURE_SHARE = 0.3;
+
+export const LAUNCH_OPTIONS: LaunchOption[] = [
+  { id: 'lv_medium', name: 'Medium rocket', massMult: 0.8, costShare: -0.04, blurb: 'Cheaper ride, less room for mass.' },
+  { id: 'lv_standard', name: 'Standard rocket', massMult: 1, costShare: 0, blurb: 'The rocket class this kind of mission usually flies on.' },
+  { id: 'lv_heavy', name: 'Heavy rocket', massMult: 1.35, costShare: 0.08, blurb: 'Lifts a much heavier craft. Costs a lot more.' },
+];
+
+export const ORBIT_OPTIONS: OrbitOption[] = [
+  { id: 'orb_close', kind: 'orbiter', name: 'Close, low orbit', eclipseMult: 1.3, linkMult: 1, scienceMult: 1.15, arrivalRiskMult: 1.2, blurb: 'Sharper data and more of it, but longer shadows and a harder arrival burn.' },
+  { id: 'orb_wide', kind: 'orbiter', name: 'Wide, high orbit', eclipseMult: 0.6, linkMult: 1, scienceMult: 0.9, arrivalRiskMult: 0.85, blurb: 'Gentler on power and fuel, but you see less.' },
+  { id: 'tel_trailing', kind: 'telescope', name: 'Drift behind Earth around the Sun', eclipseMult: 1, linkMult: 1, scienceMult: 1.1, arrivalRiskMult: 1, blurb: 'Quiet and stable for staring, but the craft slowly drifts away and the link weakens.' },
+  { id: 'tel_high', kind: 'telescope', name: 'High Earth orbit', eclipseMult: 1, linkMult: 1.6, scienceMult: 0.9, arrivalRiskMult: 1, blurb: 'Close to home for fast data, but Earth gets in the way of the view.' },
+  { id: 'fly_close', kind: 'flyby', name: 'Close pass', eclipseMult: 1, linkMult: 1, scienceMult: 1.15, arrivalRiskMult: 1.3, blurb: 'Fly near for sharp images. Debris and timing get riskier.' },
+  { id: 'fly_safe', kind: 'flyby', name: 'Safe distance pass', eclipseMult: 1, linkMult: 1, scienceMult: 0.85, arrivalRiskMult: 0.8, blurb: 'A calmer pass from farther out.' },
+  { id: 'site_plain', kind: 'lander', name: 'Flat plain near the equator', eclipseMult: 1, linkMult: 1, scienceMult: 1, arrivalRiskMult: 1, blurb: 'Smooth, sunny and safe to land on.' },
+  { id: 'site_rugged', kind: 'lander', name: 'Rugged, interesting site', eclipseMult: 1, linkMult: 1, scienceMult: 1.2, arrivalRiskMult: 1.5, blurb: 'More to discover, more ways for the landing to go wrong.' },
+];
+
+export const DIFFICULTY: Record<Difficulty, { label: string; budgetMult: number; riskMult: number; blurb: string }> = {
+  cadet: { label: 'Cadet', budgetMult: 1.15, riskMult: 0.7, blurb: 'More money, kinder odds. Learn the ropes.' },
+  engineer: { label: 'Engineer', budgetMult: 1, riskMult: 1, blurb: 'The designed experience.' },
+  veteran: { label: 'Veteran', budgetMult: 0.9, riskMult: 1.3, blurb: 'Tighter budget, harsher odds.' },
+};
+
+/** Pins the review board allows per review. Pinning everything is not a review. */
+export const MAX_PINS = 4;

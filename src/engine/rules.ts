@@ -8,7 +8,12 @@ export interface Ctx {
   proc: (p: keyof Design['process']) => string;
 }
 
-export type Effect = { kind: 'lost' } | { kind: 'degrade'; mult: number } | { kind: 'save' };
+export type Effect =
+  | { kind: 'lost' }
+  | { kind: 'degrade'; mult: number }
+  | { kind: 'save' }
+  /** An unknown outcome: the seed decides between ok and fail. Used where history does not tell us what would have happened. */
+  | { kind: 'gamble'; pFail: number; fail: Effect; ok: Effect; failText: string; okText: string };
 
 export interface CrisisRule {
   prompt: string;
@@ -114,7 +119,7 @@ export const RULES: Rule[] = [
     crisis: {
       prompt: 'Your engine valves are acting up before the big burn. Fire or stay?',
       options: [
-        { id: 'burn', label: 'Fire the engine anyway', available: () => true, effect: { kind: 'lost' }, after: 'The engine underperforms mid burn and the craft ends up in an orbit it was never built for.' },
+        { id: 'burn', label: 'Fire the engine anyway', available: () => true, effect: { kind: 'gamble', pFail: 0.5, fail: { kind: 'degrade', mult: 0.4 }, ok: { kind: 'degrade', mult: 1 }, failText: 'The burn goes wrong and leaves the craft in an orbit nobody planned for. This is the outcome NASA feared; nobody knows if it would have happened.', okText: 'The burn works this time. NASA judged the same gamble not worth taking.' }, after: 'You fire the engine.' },
         { id: 'stay', label: 'Stay in the long orbit and do science from there', available: () => true, effect: { kind: 'degrade', mult: 0.75 }, after: 'Fewer close passes, but the craft is safe and the science keeps coming.' },
       ],
       nasaChoice: 'stay', nasaLabel: 'On February 17, 2017 NASA decided Juno would stay in its 53 day orbit.',
@@ -122,8 +127,8 @@ export const RULES: Rule[] = [
   },
   {
     lessonId: 'mars-observer-loss', item: 'part:propulsion', phase: 'arrival', anim: 'signal_lost',
-    p: c => c.part('propulsion') !== 'biprop' || c.brief.target !== 'Mars' ? 0 : c.proc('faultSim') === 'fs_full' ? 0.05 : 0.25,
-    text: 'The craft pressurized its tanks before the orbit burn and was never heard from again.',
+    p: c => c.part('propulsion') !== 'biprop' || c.brief.target !== 'Mars' ? 0 : 0.2,
+    text: 'The craft began pressurizing its tanks before the orbit burn and was never heard from again. The probable cause was a leak in the propulsion lines.',
     effect: { kind: 'lost' },
   },
   {
@@ -136,7 +141,7 @@ export const RULES: Rule[] = [
         { id: 'end', label: 'Let the craft fall now', available: () => true, effect: { kind: 'degrade', mult: 0.9 }, after: 'The mission ends a few weeks early.' },
         { id: 'helium', label: 'Vent the helium that pressurizes the tanks through the thrusters', available: c => ['biprop', 'mono_large', 'mono_small'].includes(c.part('propulsion')) ? true : 'Your engine has no pressurized tanks.', effect: { kind: 'degrade', mult: 0.96 }, after: 'The gas buys extra weeks of low, close science.' },
       ],
-      nasaChoice: 'helium', nasaLabel: 'MESSENGER vented its helium pressurant as cold gas through its thrusters, a first, and kept flying until April 30, 2015.',
+      nasaChoice: 'helium', nasaLabel: 'MESSENGER vented its helium pressurant as cold gas through its thrusters and kept flying until it struck Mercury on April 30, 2015.',
     },
   },
   {
@@ -153,7 +158,7 @@ export const RULES: Rule[] = [
   },
   {
     lessonId: 'schiaparelli-imu-saturation', item: 'process:faultSim', phase: 'arrival', anim: 'crash',
-    p: c => c.brief.kind !== 'lander' ? 0 : c.proc('faultSim') === 'fs_basic' ? 0.2 : 0,
+    p: c => c.brief.kind !== 'lander' ? 0 : c.proc('faultSim') === 'fs_full' ? 0.03 : 0.2,
     text: 'A spin sensor saturated for a second. The software believed it was below the ground and let go of the parachute.',
     effect: { kind: 'lost' },
   },
@@ -164,9 +169,9 @@ export const RULES: Rule[] = [
     effect: { kind: 'lost' },
   },
   {
-    lessonId: 'mgs-2006-battery-loss', item: 'part:battery', phase: 'operations', anim: 'battery_drain',
-    p: c => c.brief.eclipseFraction === 0 || c.brief.kind === 'lander' ? 0 : c.report.batteryHours < c.report.eclipseHours * 1.5 ? (c.part('thermal') === 'thermal_basic' ? 0.55 : 0.4) : 0.05,
-    text: 'After a routine command the craft pointed a battery at the Sun. It overheated, the other could not cope, and power ran out in the shadow.',
+    lessonId: 'mgs-2006-battery-loss', item: 'process:faultSim', phase: 'operations', anim: 'battery_drain',
+    p: c => c.brief.kind !== 'orbiter' || c.brief.eclipseFraction === 0 ? 0 : (c.proc('faultSim') === 'fs_full' ? 0.04 : c.proc('faultSim') === 'fs_basic' ? 0.15 : 0.3) * (c.part('thermal') === 'thermal_basic' ? 1.3 : 1),
+    text: 'A bad memory upload drove a solar array against its stop. In safe mode the craft pointed a battery at the Sun, it overheated, and the power ran out.',
     effect: { kind: 'lost' },
   },
   {
@@ -190,13 +195,13 @@ export const RULES: Rule[] = [
   },
   {
     lessonId: 'pathfinder-priority-inversion', item: 'process:faultSim', phase: 'operations', anim: 'signal_lost',
-    p: c => c.brief.kind !== 'lander' ? 0 : c.proc('faultSim') === 'fs_none' ? 0.4 : 0,
+    p: c => c.brief.kind !== 'lander' ? 0 : c.proc('faultSim') === 'fs_none' ? 0.4 : c.proc('faultSim') === 'fs_basic' ? 0.1 : 0,
     text: 'The computer kept resetting itself on the surface. A low priority task was blocking a vital one.',
     effect: { kind: 'degrade', mult: 0.93 },
   },
   {
     lessonId: 'spirit-flash-memory', item: 'process:faultSim', phase: 'operations', anim: 'signal_lost',
-    p: c => c.brief.kind !== 'lander' ? 0 : c.proc('faultSim') === 'fs_basic' ? 0.2 : 0,
+    p: c => c.brief.kind !== 'lander' ? 0 : c.proc('faultSim') === 'fs_full' ? 0.03 : c.proc('faultSim') === 'fs_basic' ? 0.2 : 0.3,
     text: 'The memory filled with old files and the computer rebooted over and over.',
     effect: { kind: 'degrade', mult: 0.92 },
   },
@@ -207,20 +212,20 @@ export const RULES: Rule[] = [
     effect: { kind: 'degrade', mult: 0.75 },
   },
   {
-    lessonId: 'opportunity-dust-storm', item: 'part:battery', phase: 'operations', anim: 'battery_drain',
-    p: c => c.brief.kind !== 'lander' || c.part('power') === 'rtg' ? 0 : c.report.batteryHours < c.report.eclipseHours * 1.2 ? 0.35 : 0.05,
+    lessonId: 'opportunity-dust-storm', item: 'part:power', phase: 'operations', anim: 'battery_drain',
+    p: c => c.brief.kind !== 'lander' || c.part('power') === 'rtg' ? 0 : 0.2,
     text: 'A planet wide dust storm blocked the Sun. The batteries could not last until the sky cleared.',
     effect: { kind: 'lost' },
   },
   {
     lessonId: 'lewis-safe-mode-spin', item: 'process:faultSim', phase: 'operations', anim: 'tumble',
-    p: c => c.brief.kind !== 'telescope' ? 0 : c.proc('faultSim') === 'fs_none' ? 0.3 : 0,
+    p: c => c.brief.kind !== 'telescope' ? 0 : c.proc('faultSim') === 'fs_none' ? 0.3 : c.proc('faultSim') === 'fs_basic' ? 0.1 : 0,
     text: 'The craft went into safe mode and began to spin. Its panels turned away from the Sun and the battery died.',
     effect: { kind: 'lost' },
   },
   {
     lessonId: 'soho-loss-of-contact', item: 'process:faultSim', phase: 'operations', anim: 'tumble',
-    p: c => c.brief.kind !== 'telescope' ? 0 : c.proc('faultSim') === 'fs_basic' ? 0.2 : 0,
+    p: c => c.brief.kind !== 'telescope' ? 0 : c.proc('faultSim') === 'fs_full' ? 0.03 : 0.2,
     text: 'A command sequence switched off a gyro the craft needed. It spun out of control and went silent for months.',
     effect: { kind: 'degrade', mult: 0.8 },
   },
@@ -233,7 +238,7 @@ export const RULES: Rule[] = [
   {
     lessonId: 'wire-cover-ejected', item: 'part:instruments', phase: 'cruise', anim: 'overheat',
     p: c => !c.design.instruments.includes('telescope') ? 0 : c.proc('faultSim') === 'fs_none' ? 0.25 : 0,
-    text: 'The telescope cover popped off early. Sunlight boiled away the coolant and the craft spun.',
+    text: 'The telescope cover popped off early. The coolant that kept the detector cold vented away and the craft spun.',
     effect: { kind: 'degrade', mult: 0.15 },
   },
   {
@@ -251,7 +256,7 @@ export const RULES: Rule[] = [
   {
     lessonId: 'deep-impact-clock', item: 'process:faultSim', phase: 'end', anim: 'signal_lost',
     p: c => c.brief.missionDays < 3000 ? 0 : c.proc('faultSim') === 'fs_none' ? 0.4 : 0.05,
-    text: 'The onboard clock ran past the biggest number it could store. The computer kept rebooting and contact was lost.',
+    text: 'Contact was lost. The likely cause: the onboard clock ran past the biggest number it could store and the computer kept rebooting.',
     effect: { kind: 'lost' },
   },
   {
