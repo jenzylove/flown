@@ -4,71 +4,55 @@
 
 # Flown
 
-**NASA keeps a written lesson for every mission that went wrong. In 2012 its Inspector General found only 57% of its own flight project managers used them.**
-
-[Play it free](https://flown-eight.vercel.app) · [Proof and sources](https://flown-eight.vercel.app/#/proof) · NASA Space Apps Challenge 2026 · Space Mission Design Game
+**Design a space mission. Survive real mission failures.**
 
 ![NASA data](https://img.shields.io/badge/data-NASA%20NSSDCA%20%2B%20LLIS-0b0d12) ![Real failures](https://img.shields.io/badge/real%20failures-38%20sourced-e8641b) ![Answer key](https://img.shields.io/badge/answer%20key-27%2F27-2b7a4b) ![License](https://img.shields.io/badge/license-MIT-lightgrey)
 
-<img src="docs/hero.png" alt="Flown landing page" width="900" />
+<img src="docs/hero.png" alt="Flown: the landing page plays a real failure and its fix" width="900" />
 
 </div>
 
-The lessons are public, and almost nobody reads them ([NASA OIG IG 12 012](https://www.oversight.gov/sites/default/files/oig-reports/IG-12-012.pdf)). Students meet spacecraft one subsystem at a time, so the trade offs that actually lose missions stay on paper. Of university class small satellites that reached orbit in Michael Swartwout's study, about 30% were dead on arrival and another 15% failed early ([The Space Review](https://thespacereview.com/article/3047/1)).
+Live at **[flown-eight.vercel.app](https://flown-eight.vercel.app)**. Free, no sign up. Built for NASA Space Apps 2026, challenge: **Space Mission Design Game**.
 
-**Flown turns NASA's failure record into a game you lose on purpose.** You design a mission to a real brief, inside its real budget. Before launch you get four pins for what worries you. Then you fly, and the failures that strike are ones that really happened, triggered by the choices you made. Skip the end to end interface check and you can arrive far too low, like Mars Climate Orbiter. Fly an unfolding dish with no flight like test and it can jam, like Galileo. When a real crisis hits, you make the call, then see what NASA actually chose. Fix it, fly the same seed again, and watch the fix hold. Your **caught before launch** rate is the skill you build.
+NASA writes down what went wrong on every mission. In 2012 its Inspector General found only **57%** of its own flight project managers used those lessons at all ([IG 12 012](https://www.oversight.gov/sites/default/files/oig-reports/IG-12-012.pdf)). Students meet spacecraft one part at a time, and the people who will build the next ones learn the hard way. Of university small satellites that reached orbit in Michael Swartwout's study, about 30% were dead on arrival and another 15% failed early ([The Space Review](https://thespacereview.com/article/3047/1)).
 
-## Judges: start here
+Flown turns that record into a game you learn by losing.
 
-No account, no download, no keys.
+1. **Build to a real brief.** Six missions modeled on real ones, from a Mars orbiter to a Pluto flyby, inside about the real budget. Pick power, antenna, engine, computer, instruments, rocket, orbit and how much testing you can afford.
+2. **Pin what worries you.** Before launch you get four pins. Pay to fix the ones you believe in. A pin on something with no real risk counts against you.
+3. **Fly into real failures.** 27 failures that really happened can strike, triggered by your choices. Skip the end to end interface check and you can arrive far too low, like Mars Climate Orbiter. Fly an unfolding dish without a flight like test and it can jam, like Galileo. In a real crisis you make the call, then see what the real team chose.
+4. **Read the case, fix it, fly again.** Every failure opens the real case file with its sources. Refly the same seed and watch the fix hold. Each lesson becomes a star in your Lesson Sky, and your **caught before launch** rate is the skill you build.
 
-| | What you see | Time |
+## Try it in two minutes
+
+| | What you do | Time |
 | --- | --- | --- |
-| **A** | The landing page plays one full loop by itself: a dish jams like Galileo's, the fix holds | 30 s |
-| **B** | Make Juno's real 2016 engine call, then see NASA's decision and sources | 1 min |
-| **C** | Build, review, fly, read the case, refly and catch it | 3 min |
-| **D** | Two to four players on one device, same mission and same dice | 4 min |
+| **1** | Open the site and watch the hero: a dish jams like Galileo's, then the fix holds | 30 s |
+| **2** | Press **Or try Juno's real call**: decide Juno's 2016 engine problem, then see NASA's decision and sources | 1 min |
+| **3** | **Play free** → **Orbit Jupiter** → Antenna: **Unfolding umbrella dish** → Process: **No deployment test** → review → **Launch**. When it jams, open the **Galileo** case, then **Fix it and refly** with the antenna pinned and fixed | 3 min |
+| **4** | **Fly as a crew** with 2 to 4 names on one device, or send **Challenge a friend** after a solo flight | 4 min |
 
-**C, step by step**
+## Proof you can check
 
-1. Open **[flown-eight.vercel.app](https://flown-eight.vercel.app)** and press **Play free**. Pick **Orbit Jupiter**.
-2. Open the **Antenna** tab and choose **Unfolding umbrella dish**. Under **Process**, choose **No deployment test**. Watch the budget rail move.
-3. **Go to review.** Do not pin anything. **Launch.**
-4. If the dish jams, decide the crisis, then open the **Galileo** case file: what happened, the root cause, what NASA did, the lesson, the sources, and your craft next to the real Juno.
-5. Press **Fix it and refly**. Pin the antenna, pay for the fix, launch on the same seed. The fix holds and the star turns bright in your **Lesson Sky**.
-
-**D:** on the brief screen choose **Fly as a crew**, add two names, and pass the device. The crew board ranks you and shows which real failures hit whom. After any solo flight, **Challenge a friend** copies a link that replays your exact flight next to theirs.
-
-## Why it needs NASA data
-
-Every failure in play is a real one, and its case file is NASA's own story. Take the data away and Flown is one more game with made up failures.
-
-| NASA data | What it does in Flown | Where |
-| --- | --- | --- |
-| NASA Lessons Learned Information System and NASA mishap reports | 38 real failures, each with sources and a plain words lesson; 27 can strike your craft, triggered by your design | [`src/data/lessons.json`](src/data/lessons.json), [`src/engine/rules.ts`](src/engine/rules.ts) |
-| NASA mission records (JPL, NASA, NTRS) | The real crisis decisions: what the team faced and what NASA chose | [`src/engine/rules.ts`](src/engine/rules.ts), [`src/engine/index.ts`](src/engine/index.ts) |
-| NASA Space Science Data Coordinated Archive (NSSDCA) | Real spacecraft mass, power, rocket and launch date for the side by side reveal and the mass check | [`scripts/fetch_nssdca.py`](scripts/fetch_nssdca.py), [`src/data/nssdca.json`](src/data/nssdca.json) |
-| NASA Office of Inspector General | The problem: lessons that exist but are not used | landing page, this README |
-
-## Measured, not guessed
-
-- **The answer key:** for every one of the **27 real failures in play**, a test finds a design and seed where it strikes, then proves that pinning and fixing the right part prevents it on the same seed. **27 of 27 pass.** [`answer-key.test.ts`](src/engine/__tests__/answer-key.test.ts)
-- **Sources:** all 38 lessons carry public sources (98 links), checked by script. A few news sites block automated checks but open in a browser.
-- **Mass check:** for each mission, a Flown design that resembles the real craft is compared with NSSDCA's listed mass. Errors run from 2% to 37% and every row is shown on the [proof page](https://flown-eight.vercel.app/#/proof).
-- **The app:** 48 engine tests, plus a browser run of all six missions, crew mode and share links at desktop and phone width with zero console errors.
-
-## Honest by design
-
-| Part | Status |
+| Claim | How it is checked |
 | --- | --- |
-| The 38 failures, crises and NASA's decisions | Real, each with sources |
-| Spacecraft mass, power, rocket, launch date | Real, from NSSDCA, linked per craft |
-| Mission budgets | About the real mission cost, labelled "not a cap" |
-| Part values, failure chances, dry mass limits | Simplified game values, said so on screen |
-| Firing Juno's engine anyway | A seeded gamble: nobody knows what would have happened, and the game says so |
-| Flights | Deterministic: same design and seed fly the same way, so a refly proves a fix |
+| Every failure in play can really strike, and its fix really prevents it | [Answer key](src/engine/__tests__/answer-key.test.ts): for each of the 27, a design and seed where it strikes, then the same seed with the fix. **27 of 27 pass.** |
+| Every failure is real | All 38 lessons carry public sources, 98 links in total, listed on the [proof page](https://flown-eight.vercel.app/#/proof) and in [`lessons.json`](src/data/lessons.json) |
+| Real spacecraft facts | Mass, power, rocket and launch date read from NASA's NSSDCA catalog by [`fetch_nssdca.py`](scripts/fetch_nssdca.py) |
+| Flown's mass rules are close to real craft | Compared with NSSDCA for each mission: errors from 2% to 37%, every row published on the proof page |
+| The app works | 49 tests, plus a browser run of all six missions, crew mode and share links at desktop and phone width with zero console errors |
 
-No accounts and no tracking. Progress lives only in your browser. Not a NASA product; no NASA logos or insignia are used.
+**Real:** the 38 failures, the crises and NASA's decisions, spacecraft facts from NSSDCA, budgets close to real mission costs (labelled "not a cap").
+**Simplified for play:** part values, failure chances and dry mass limits, said so on screen. Firing Juno's engine anyway is a seeded gamble, because nobody knows what would have happened.
+
+## Why NASA data is the game
+
+Take the data out and Flown is one more game with made up failures. With it, every loss is a real lesson from a real mission:
+
+- **NASA Lessons Learned Information System and mishap reports:** the failures, root causes and lessons ([`lessons.json`](src/data/lessons.json), [`rules.ts`](src/engine/rules.ts)).
+- **NASA and JPL mission records:** the real crisis decisions and what NASA chose.
+- **NASA NSSDCA:** the real craft in every "your craft vs the real one" reveal.
+- **NASA Office of Inspector General:** the problem Flown answers.
 
 ## How it works
 
@@ -79,17 +63,11 @@ brief ─▶ hangar (parts, instruments, rocket, orbit, tests, live budget)
       ─▶ case file (real story + sources)  ─▶ refly same seed  ─▶ Lesson Sky (catch rate)
 ```
 
-`src/engine` is pure TypeScript: the catalog, budget evaluation, 27 rules mapping design choices to real lessons, a seeded flight simulator with crises, catch scoring, share codes and the mass check. `src/ui` and `src/three` render it with React and three.js; the craft is built from your parts and every failure plays on the model.
+`src/engine` is pure TypeScript: the catalog, budget evaluation, 27 rules that map design choices to real lessons, a seeded flight simulator, catch scoring, share codes and the mass check. `src/ui` and `src/three` render it with React and three.js; the craft is built from your parts and every failure plays on the model. No accounts and no tracking; progress lives in your browser.
 
-## What was built during the hackathon
+## How it was built
 
-Everything in this repository was built during NASA Space Apps 2026 (November 14 to 15): the lesson dataset and its sourcing, the NSSDCA fetch, the engine and its tests, the 3D craft and failure animations, the landing page, the game, crew mode and share links. Libraries: React, three.js, @react-three/fiber, drei, zustand, Vite, Vitest.
-
-## Use of AI tools
-
-AI coding assistants helped write and review the code and helped gather and summarize sources for the lesson dataset; every lesson keeps its source links so each fact can be checked. No AI generated images, video or audio are used; all visuals are drawn in code.
-
-## Run it
+Built solo by team JDollar during NASA Space Apps 2026, November 14 to 15. Not a NASA product; no NASA logos or insignia are used.
 
 ```bash
 npm install
