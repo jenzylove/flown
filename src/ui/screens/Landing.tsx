@@ -892,7 +892,7 @@ export default function Landing() {
         <div className="lp-foot-top">
           <div className="lp-foot-brand">
             <p className="lp-foot-mark">Flown</p>
-            <p>A free browser game where you design a space mission and survive real mission failures, most of them from NASAsurvive NASA&rsquo;s real failures.rsquo;s own records.</p>
+            <p>A free browser game where you design a space mission and survive real mission failures, most of them from NASA&rsquo;s own records.</p>
           </div>
           <nav className="lp-foot-cols" aria-label="Footer">
             <div>
