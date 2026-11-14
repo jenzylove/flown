@@ -120,7 +120,7 @@ export const BRIEFS: Brief[] = [
     id: 'mars-land', title: 'Land on Mars', target: 'Mars surface', kind: 'lander',
     goal: 'Land safely and listen for marsquakes to see inside the planet.',
     story: 'Seven minutes from the top of the atmosphere to the ground, all on autopilot.',
-    budgetM: 830, budgetNote: 'About the real cost of InSight, not a cap', launchMassLimitKg: 620,
+    budgetM: 814, budgetNote: 'About the real cost of InSight (NASA: $813.8M), not a cap', launchMassLimitKg: 620,
     sunFactor: 0.43, eclipseFraction: 0.5, missionDays: 1440, arrivalDay: 205, deltaVNeed: 'medium',
     realCraft: 'insight', maxInstruments: 3, linkFactor: 0.15, scheduleSlackDays: 125,
   },
