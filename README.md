@@ -30,7 +30,7 @@ Flown turns that record into a game you learn by losing.
 | **1** | Open the site and watch the hero: a dish jams like Galileo's, then the fix holds | 30 s |
 | **2** | Press **Or try Juno's real call**: decide Juno's 2016 engine problem, then see NASA's decision and sources | 1 min |
 | **3** | Open the **[judge path](https://flown-eight.vercel.app/#/judge)**: Orbit Jupiter on a fixed seed with the unfolding dish and no deployment test already chosen. Go to review, **Launch**, and the dish jams like Galileo's. Open the case, then **Fix it and refly** with the antenna pinned and fixed: same seed, the fix holds | 3 min |
-| **4** | **Fly as a crew** with 2 to 4 names on one device, or send **Challenge a friend** after a solo flight | 4 min |
+| **4** | **Fly as a crew** with 2 to 4 names on one device: **One craft** splits the spacecraft into roles, each with its own systems and a pin, launch needs every GO, and the role that owns a failing part makes the crisis call. Or race on the same seed, or send **Challenge a friend** after a solo flight | 4 min |
 
 ## Proof you can check
 
@@ -40,7 +40,7 @@ Flown turns that record into a game you learn by losing.
 | Every failure is real | All 38 lessons carry public sources, 98 links in total, listed on the [proof page](https://flown-eight.vercel.app/#/proof) and in [`lessons.json`](src/data/lessons.json) |
 | Real spacecraft facts | Mass, power, rocket and launch date read from NASA's NSSDCA catalog by [`fetch_nssdca.py`](scripts/fetch_nssdca.py) |
 | Flown's mass rules are close to real craft | Compared with NSSDCA for each mission: errors up to 37%, every row published on the proof page |
-| The app works | 49 tests, plus a browser run of all six missions, crew mode and share links at desktop and phone width with zero console errors |
+| The app works | 56 tests, plus a browser run of all six missions, crew mode and share links at desktop and phone width with zero console errors |
 
 **Real:** the 38 failures, the crises and NASA's decisions, spacecraft facts from NSSDCA, budgets close to real mission costs (labelled "not a cap").
 **Simplified for play:** part values, failure chances and dry mass limits, said so on screen. Firing Juno's engine anyway is a seeded gamble, because nobody knows what would have happened.
