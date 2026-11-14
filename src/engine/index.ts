@@ -69,7 +69,7 @@ export function defaultDesign(briefId: string): Design {
       thermal: b.sunFactor > 3 || b.sunFactor < 0.05 ? 'thermal_full' : 'thermal_basic',
     },
     instruments: b.kind === 'telescope' ? ['telescope'] : b.kind === 'lander' ? ['seismometer', 'camera'] : ['camera', 'magnetometer'],
-    process: { interfaceCheck: 'ic_spot', deployTest: 'dt_part', faultSim: 'fs_basic', fuelMargin: 'fm_10' },
+    process: { interfaceCheck: 'ic_full', deployTest: 'dt_part', faultSim: 'fs_basic', fuelMargin: 'fm_10' },
     fixes: [],
     launch: 'lv_standard',
     orbit: ORBIT_OPTIONS.find(o => o.kind === b.kind)!.id,

@@ -89,6 +89,7 @@ export default function Proof() {
           <li>Lessons: <a href="https://llis.nasa.gov/" target="_blank" rel="noreferrer">NASA Lessons Learned Information System (LLIS)</a> and the mishap reports and articles linked on each lesson.</li>
           <li>The 57% figure: <a href={IG_URL} target="_blank" rel="noreferrer">NASA Office of Inspector General, report IG 12 012 (2012)</a>.</li>
           <li>Spacecraft visuals are drawn in code from simple shapes. No generated images, no NASA logos or insignia.</li>
+          <li>Built with help from Claude Code, an AI coding assistant, for code, tests and gathering the public sources. Every lesson keeps its links so each fact can be checked.</li>
           <li>Type: Instrument Serif, Martian Mono and Schibsted Grotesk, via Google Fonts, under the SIL Open Font License 1.1.</li>
           <li>
             Code: <a href="https://react.dev/" target="_blank" rel="noreferrer">React</a> (MIT),{' '}

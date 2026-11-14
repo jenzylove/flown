@@ -29,7 +29,7 @@ Flown turns that record into a game you learn by losing.
 | --- | --- | --- |
 | **1** | Open the site and watch the hero: a dish jams like Galileo's, then the fix holds | 30 s |
 | **2** | Press **Or try Juno's real call**: decide Juno's 2016 engine problem, then see NASA's decision and sources | 1 min |
-| **3** | **Play free** → **Orbit Jupiter** → Antenna: **Unfolding umbrella dish** → Process: **No deployment test** → review → **Launch**. When it jams, open the **Galileo** case, then **Fix it and refly** with the antenna pinned and fixed | 3 min |
+| **3** | Open the **[judge path](https://flown-eight.vercel.app/#/judge)**: Orbit Jupiter on a fixed seed with the unfolding dish and no deployment test already chosen. Go to review, **Launch**, and the dish jams like Galileo's. Open the case, then **Fix it and refly** with the antenna pinned and fixed: same seed, the fix holds | 3 min |
 | **4** | **Fly as a crew** with 2 to 4 names on one device, or send **Challenge a friend** after a solo flight | 4 min |
 
 ## Proof you can check
@@ -39,7 +39,7 @@ Flown turns that record into a game you learn by losing.
 | Every failure in play can really strike, and its fix really prevents it | [Answer key](src/engine/__tests__/answer-key.test.ts): for each of the 27, a design and seed where it strikes, then the same seed with the fix. **27 of 27 pass.** |
 | Every failure is real | All 38 lessons carry public sources, 98 links in total, listed on the [proof page](https://flown-eight.vercel.app/#/proof) and in [`lessons.json`](src/data/lessons.json) |
 | Real spacecraft facts | Mass, power, rocket and launch date read from NASA's NSSDCA catalog by [`fetch_nssdca.py`](scripts/fetch_nssdca.py) |
-| Flown's mass rules are close to real craft | Compared with NSSDCA for each mission: errors from 2% to 37%, every row published on the proof page |
+| Flown's mass rules are close to real craft | Compared with NSSDCA for each mission: errors up to 37%, every row published on the proof page |
 | The app works | 49 tests, plus a browser run of all six missions, crew mode and share links at desktop and phone width with zero console errors |
 
 **Real:** the 38 failures, the crises and NASA's decisions, spacecraft facts from NSSDCA, budgets close to real mission costs (labelled "not a cap").
@@ -67,7 +67,7 @@ brief ─▶ hangar (parts, instruments, rocket, orbit, tests, live budget)
 
 ## How it was built
 
-Built solo by team JDollar during NASA Space Apps 2026, November 14 to 15. Not a NASA product; no NASA logos or insignia are used.
+Built solo by team JDollar during NASA Space Apps 2026, November 14 to 15, with Claude Code (an AI coding assistant) writing and testing much of the code and helping gather the public sources, and the owner making every product call. Every lesson keeps its source links so each fact can be checked. Not a NASA product; no NASA logos or insignia are used.
 
 ```bash
 npm install
