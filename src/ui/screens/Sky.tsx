@@ -1,8 +1,8 @@
 import { useMemo, useState } from 'react';
-import { LESSONS, PLAYABLE_LESSONS, catchRate, dailyBrief, briefById } from '../eng';
+import { LESSONS, PLAYABLE_LESSONS, BRIEFS, catchRate, dailyBrief, briefById, crewScore } from '../eng';
 import { useGame } from '../store';
 import { go, href } from '../router';
-import { hash, pct, isoDay, prettyDate } from '../format';
+import { hash, pct, isoDay, prettyDate, n0, two } from '../format';
 import { useNarrow } from '../../three/palette';
 
 const PAD = 46;
@@ -103,6 +103,14 @@ export default function Sky() {
   const today = dailyBrief(new Date());
   const flownToday = runs.some((r) => r.daily && r.seed === today.seed && r.day === isoDay());
   const hov = hover ? stars.find((s) => s.id === hover) : null;
+  const boards = BRIEFS.map((b) => ({
+    brief: b,
+    top: runs
+      .filter((r) => r.briefId === b.id)
+      .map((r) => ({ r, score: crewScore(r) }))
+      .sort((a, z) => z.score - a.score || z.r.sciencePct - a.r.sciencePct)
+      .slice(0, 5),
+  })).filter((x) => x.top.length > 0);
 
   return (
     <div className="page sky-page">
@@ -202,6 +210,37 @@ export default function Sky() {
         </div>
       </section>
 
+      <section className="best">
+        <p className="mono-label">Best flights &middot; stored on this device only</p>
+        {boards.length === 0 ? (
+          <p className="best-empty">No flights on this device yet. Your best five per brief land here, with every crew turn flown on this screen.</p>
+        ) : (
+          <>
+            <p className="best-note">
+              Top five per brief, kept in this browser and nowhere else. Score is science percent, plus 15 for each real failure caught at review, minus 5 for each one missed.
+            </p>
+            <div className="best-grid">
+              {boards.map(({ brief, top }) => (
+                <div key={brief.id} className="best-board">
+                  <p className="best-title">{brief.title}</p>
+                  <ol className="best-list">
+                    {top.map(({ r, score }, k) => (
+                      <li key={r.at}>
+                        <span className="b-rank">{two(k + 1)}</span>
+                        <span className="b-who">{r.crew ?? 'Solo'}{r.refly ? ' (refly)' : ''}<em>{prettyDate(r.day)}</em></span>
+                        <span className="b-sci">{pct(r.sciencePct)}<em>science</em></span>
+                        <span className="b-caught">{n0(r.caught.length)}<em>caught</em></span>
+                        <span className="b-score">{n0(score)}</span>
+                      </li>
+                    ))}
+                  </ol>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+      </section>
+
       {runs.length > 0 && (
         <section className="history">
           <p className="mono-label">Flight log</p>
@@ -209,7 +248,7 @@ export default function Sky() {
             {[...runs].reverse().slice(0, 12).map((r) => (
               <li key={r.at}>
                 <span className="h-day">{prettyDate(r.day)}</span>
-                <span className="h-brief">{(() => { try { return briefById(r.briefId).title; } catch { return r.briefId; } })()}{r.refly && ' (refly)'}</span>
+                <span className="h-brief">{(() => { try { return briefById(r.briefId).title; } catch { return r.briefId; } })()}{r.refly && ' (refly)'}{r.crew && ` · ${r.crew}`}</span>
                 <span className={'h-out o-' + r.outcome}>{r.outcome}</span>
                 <span className="h-sci">{pct(r.sciencePct)} science</span>
                 <span className="h-catch">{r.caught.length} caught &middot; {r.missed.length} missed</span>

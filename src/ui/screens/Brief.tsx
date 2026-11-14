@@ -35,6 +35,8 @@ export default function Brief() {
   const start = useGame((s) => s.startMission);
   const mission = useGame((s) => s.mission);
   const runs = useGame((s) => s.runs);
+  const crew = useGame((s) => s.crew);
+  const crewOpen = crew && crew.turn < crew.players.length ? crew : null;
   const today = dailyBrief(new Date());
   const todayDone = runs.some((r) => r.daily && r.seed === today.seed && r.briefId === today.brief.id);
 
@@ -58,11 +60,24 @@ export default function Brief() {
         <p className="page-lede">
           Each brief carries the real mission&rsquo;s budget and the mass its era rocket could send. Your craft lives or dies inside them.
         </p>
-        {resumeTitle && (
+        {resumeTitle && mission?.crewIndex === undefined && (
           <a className="resume" href={href('/hangar')}>
             Resume your craft for <b>{resumeTitle}</b>
           </a>
         )}
+        <div className="paths">
+          <p className="path path-solo">
+            <span className="mono-label">Solo</span>
+            Pick a brief below and fly it alone.
+          </p>
+          <p className="path path-crew">
+            <span className="mono-label">Crew &middot; 2 to 4 players</span>
+            One device, one brief, the same failures for everyone. Take turns, then compare.
+            <a className="btn btn-ghost btn-small" href={href(crewOpen ? '/crew/pass' : '/crew')}>
+              {crewOpen ? `Resume the crew of ${crewOpen.players.length}` : 'Fly as a crew'}
+            </a>
+          </p>
+        </div>
       </header>
 
       <section className="daily">

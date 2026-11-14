@@ -7,6 +7,7 @@ import { looksOf, instrumentLooks } from '../craftLooks';
 import { go, href } from '../router';
 import { n0, pct } from '../format';
 import { NoMission } from './NoMission';
+import { ShareBox, ComparePanel } from '../parts/Versus';
 
 const PHASES: FlightEvent['phase'][] = ['launch', 'cruise', 'arrival', 'operations', 'end'];
 const PHASE_NAME: Record<FlightEvent['phase'], string> = {
@@ -24,6 +25,7 @@ export default function Flight() {
   const record = useGame((s) => s.record);
   const refly = useGame((s) => s.refly);
   const launch = useGame((s) => s.launch);
+  const crew = useGame((s) => s.crew);
   const run = mission?.run ?? null;
   const events = run?.events ?? [];
   const [shown, setShown] = useState(() => (mission?.run?.done && mission.recorded ? mission.run.events.length : 0));
@@ -94,12 +96,15 @@ export default function Flight() {
   };
 
   const r = run.result;
+  const crewTurn = mission.crewIndex !== undefined && crew && crew.briefId === mission.briefId && crew.seed === mission.seed ? crew : null;
+  const crewName = crewTurn ? crewTurn.players[mission.crewIndex!]?.name : null;
+  const nextUp = crewTurn && crewTurn.turn < crewTurn.players.length ? crewTurn.players[crewTurn.turn] : null;
   const labelFor = (id: string) => items.find((i) => i.id === id)?.label ?? id;
 
   return (
     <div className={'page flight' + (lost ? ' is-lost' : '')}>
       <header className="page-head flight-head">
-        <p className="eyebrow">Step 4 of 4 &middot; Flight &middot; {brief.title} &middot; seed {run.seed}</p>
+        <p className="eyebrow">{crewName ? `${crewName} flying` : 'Step 4 of 4'} &middot; Flight &middot; {brief.title} &middot; seed {run.seed}</p>
         <h1 className="page-title">{finished && r ? OUTCOME[r.outcome] : current ? `Day ${n0(current.day)}` : 'Countdown'}</h1>
       </header>
 
@@ -215,13 +220,25 @@ export default function Flight() {
                   <p className="result-quiet">Nothing from the lesson library struck this craft on this seed.</p>
                 )}
               </dl>
-              <div className="cta-row">
-                {r.triggered.length + r.missed.length > 0 && (
-                  <button className="btn btn-primary" onClick={() => { refly(); go('/refly'); }}>Fix it and refly</button>
-                )}
-                <a className="btn btn-ghost" href={href('/sky')}>Lesson sky</a>
-                <a className="btn btn-ghost" href={href('/brief')}>New mission</a>
-              </div>
+              {mission.challenge && mission.recorded && <ComparePanel mission={mission} design={run.design} result={r} />}
+              {crewTurn ? (
+                <div className="cta-row">
+                  {nextUp ? (
+                    <button className="btn btn-primary" onClick={() => go('/crew/pass')}>Pass the device to {nextUp.name}</button>
+                  ) : (
+                    <button className="btn btn-primary" onClick={() => go('/crew/board')}>See the crew board</button>
+                  )}
+                </div>
+              ) : (
+                <div className="cta-row">
+                  {r.triggered.length + r.missed.length > 0 && (
+                    <button className="btn btn-primary" onClick={() => { refly(); go('/refly'); }}>Fix it and refly</button>
+                  )}
+                  <ShareBox mission={mission} />
+                  <a className="btn btn-ghost" href={href('/sky')}>Lesson sky</a>
+                  <a className="btn btn-ghost" href={href('/brief')}>New mission</a>
+                </div>
+              )}
             </section>
           )}
         </div>

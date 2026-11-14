@@ -3,6 +3,7 @@ import {
   defaultDesign,
   startFlight,
   resolveCrisis,
+  decodeShare,
 } from './eng';
 import type {
   Design,
@@ -44,6 +45,34 @@ export interface Mission {
   recorded: boolean;
   refly: { slots: SlotId[]; lessons: string[] } | null;
   attempt: number;
+  /** Crisis option ids picked this flight, in order (so a share link can replay the flight). */
+  choices?: string[];
+  /** Set when this mission is one player's turn in a crew game. */
+  crewIndex?: number;
+  /** Set when this mission answers a friend's share link. */
+  challenge?: Challenge;
+}
+
+/** A friend's share link: the encoded design and seed, plus their pins, fixes and crisis picks. */
+export interface Challenge {
+  code: string;
+  meta: string;
+  mode: 'same' | 'own';
+}
+
+export interface CrewPlayer {
+  name: string;
+  done: boolean;
+  design?: Design;
+  result?: FlightResult;
+}
+
+export interface Crew {
+  briefId: string;
+  seed: number;
+  players: CrewPlayer[];
+  turn: number;
+  startedAt: string;
 }
 
 export interface RunRecord {
@@ -60,6 +89,8 @@ export interface RunRecord {
   prevented: string[];
   missed: string[];
   falseFlags: string[];
+  /** Player name when the run was a crew turn. */
+  crew?: string;
 }
 
 export interface Streak {
@@ -72,6 +103,11 @@ interface State {
   lessons: Record<string, LessonState>;
   runs: RunRecord[];
   streak: Streak;
+  crew: Crew | null;
+  startCrew: (names: string[], briefId: string) => void;
+  beginCrewTurn: () => void;
+  endCrew: () => void;
+  startChallenge: (code: string, meta: string, mode: Challenge['mode']) => boolean;
   startMission: (briefId: string, seed: number, daily: boolean) => void;
   setPart: (slot: SlotId, id: string) => void;
   toggleInstrument: (id: string, max: number) => void;
@@ -97,27 +133,74 @@ export const ANIM_SLOT: Partial<Record<FailureAnim, SlotId>> = {
   crash: 'computer',
 };
 
-const K = { mission: 'flown.mission', lessons: 'flown.lessons', runs: 'flown.runs', streak: 'flown.streak' };
+const K = { mission: 'flown.mission', lessons: 'flown.lessons', runs: 'flown.runs', streak: 'flown.streak', crew: 'flown.crew' };
+
+function freshMission(briefId: string, seed: number, daily: boolean, extra: Partial<Mission> = {}): Mission {
+  return {
+    briefId,
+    seed,
+    daily,
+    design: defaultDesign(briefId),
+    flagged: [],
+    fixed: [],
+    run: null,
+    recorded: false,
+    refly: null,
+    attempt: 1,
+    choices: [],
+    ...extra,
+  };
+}
 
 export const useGame = create<State>((set, get) => ({
   mission: load<Mission | null>(K.mission, null),
   lessons: load<Record<string, LessonState>>(K.lessons, {}),
   runs: load<RunRecord[]>(K.runs, []),
   streak: load<Streak>(K.streak, { count: 0, last: null }),
+  crew: load<Crew | null>(K.crew, null),
+
+  startCrew(names, briefId) {
+    const crew: Crew = {
+      briefId,
+      seed: Math.floor(Math.random() * 100000),
+      players: names.map((name) => ({ name, done: false })),
+      turn: 0,
+      startedAt: new Date().toISOString(),
+    };
+    set({ crew });
+    save(K.crew, crew);
+  },
+
+  beginCrewTurn() {
+    const crew = get().crew;
+    if (!crew || crew.turn >= crew.players.length) return;
+    const mission = freshMission(crew.briefId, crew.seed, false, { crewIndex: crew.turn });
+    set({ mission });
+    save(K.mission, persistable(mission));
+  },
+
+  endCrew() {
+    const m = get().mission;
+    const mission = m && m.crewIndex !== undefined ? null : m;
+    set({ crew: null, mission });
+    save(K.crew, null);
+    save(K.mission, mission ? persistable(mission) : null);
+  },
+
+  startChallenge(code, meta, mode) {
+    const dec = decodeShare(code);
+    if (!dec) return false;
+    const mission = freshMission(dec.design.briefId, dec.seed, false, {
+      design: mode === 'same' ? { ...dec.design, fixes: [] } : defaultDesign(dec.design.briefId),
+      challenge: { code, meta, mode },
+    });
+    set({ mission });
+    save(K.mission, persistable(mission));
+    return true;
+  },
 
   startMission(briefId, seed, daily) {
-    const mission: Mission = {
-      briefId,
-      seed,
-      daily,
-      design: defaultDesign(briefId),
-      flagged: [],
-      fixed: [],
-      run: null,
-      recorded: false,
-      refly: null,
-      attempt: 1,
-    };
+    const mission = freshMission(briefId, seed, daily);
     set({ mission });
     save(K.mission, persistable(mission));
   },
@@ -158,14 +241,17 @@ export const useGame = create<State>((set, get) => ({
     const m = get().mission;
     if (!m) return null;
     const run = startFlight(m.design, m.seed, m.flagged, m.fixed);
-    patchMission({ run, recorded: false });
+    patchMission({ run, recorded: false, choices: [] });
     return run;
   },
 
   resolve(optionId) {
     const m = need();
     if (!m.run) return;
-    patchMission({ run: resolveCrisis(m.run, optionId) });
+    const before = m.run;
+    const run = resolveCrisis(before, optionId);
+    if (run === before) return;
+    patchMission({ run, choices: [...(m.choices ?? []), optionId] });
   },
 
   record() {
@@ -198,6 +284,15 @@ export const useGame = create<State>((set, get) => ({
       missed: r.missed,
       falseFlags: r.falseFlags,
     };
+    let crew = s.crew;
+    if (m.crewIndex !== undefined && crew && crew.briefId === m.briefId && crew.seed === m.seed) {
+      const p = crew.players[m.crewIndex];
+      if (p && !p.done) {
+        rec.crew = p.name;
+        const players = crew.players.map((x, i) => (i === m.crewIndex ? { ...x, done: true, design: m.run!.design, result: r } : x));
+        crew = { ...crew, players, turn: Math.max(crew.turn, m.crewIndex + 1) };
+      }
+    }
     const runs = [...s.runs, rec].slice(-200);
     let streak = s.streak;
     if (streak.last !== today) {
@@ -205,7 +300,8 @@ export const useGame = create<State>((set, get) => ({
       streak = { count: gap === 1 ? streak.count + 1 : 1, last: today };
     }
     const mission = { ...m, recorded: true };
-    set({ lessons, runs, streak, mission });
+    set({ lessons, runs, streak, mission, crew });
+    save(K.crew, crew);
     save(K.lessons, lessons);
     save(K.runs, runs);
     save(K.streak, streak);
@@ -229,6 +325,7 @@ export const useGame = create<State>((set, get) => ({
       recorded: false,
       flagged: [],
       fixed: [],
+      choices: [],
       refly: { slots: [...slots], lessons: [...lessonIds] },
       attempt: m.attempt + 1,
     });

@@ -21,6 +21,7 @@ type Tab = SlotId | 'instruments' | 'process';
 
 export default function Hangar({ refly }: { refly?: boolean }) {
   const mission = useGame((s) => s.mission);
+  const crew = useGame((s) => s.crew);
   const setPart = useGame((s) => s.setPart);
   const toggleInstrument = useGame((s) => s.toggleInstrument);
   const setProcess = useGame((s) => s.setProcess);
@@ -45,7 +46,7 @@ export default function Hangar({ refly }: { refly?: boolean }) {
     <div className="page hangar">
       <header className="page-head hangar-head">
         <p className="eyebrow">
-          {refly ? 'Refly' : 'Step 2 of 4'} &middot; Hangar &middot; {brief.title}
+          {mission.crewIndex !== undefined && crew?.players[mission.crewIndex] ? `${crew.players[mission.crewIndex].name}’s turn` : refly ? 'Refly' : mission.challenge ? 'A friend’s seed' : 'Step 2 of 4'} &middot; Hangar &middot; {brief.title}
         </p>
         <h1 className="page-title">{refly ? 'Same seed. Prove the fix.' : 'Build the craft.'}</h1>
         {refly && mission.refly && mission.refly.lessons.length > 0 ? (

@@ -568,6 +568,123 @@ ul, ol { margin: 0; padding: 0; list-style: none; }
   .choice:hover:not(:disabled) { padding-left: 0; }
 }
 
+/* ================================================================
+   crew, share, best flights
+   ================================================================ */
+.paths { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr); gap: 0; margin-top: 26px; border-top: 1px solid var(--line); }
+.path { padding: 16px 22px 4px 0; font-size: 15px; color: var(--ink-2); }
+.path + .path { padding-left: 22px; border-left: 1px solid var(--line-2); }
+.path .mono-label { margin-bottom: 6px; color: var(--ink); }
+.path .btn { display: flex; width: max-content; margin-top: 12px; }
+
+.crew-sec { margin-bottom: 40px; max-width: 900px; }
+.crew-names { border-top: 1px solid var(--line-2); margin-bottom: 4px; }
+.crew-names li { display: grid; grid-template-columns: 44px minmax(0, 1fr) auto; align-items: center; gap: 12px; border-bottom: 1px solid var(--line-2); transition: box-shadow 0.3s var(--ease-out); }
+.crew-no { font-family: var(--f-mono); font-size: 11px; color: var(--ink-3); letter-spacing: 0.1em; }
+.crew-input {
+  width: 100%; min-width: 0; padding: 14px 0; border: 0; background: transparent; color: var(--ink);
+  font-family: var(--f-display); font-size: clamp(26px, 3vw, 36px); line-height: 1.1; outline: none;
+}
+.crew-input::placeholder { color: var(--ink-3); opacity: 0.6; }
+.crew-names li:focus-within { box-shadow: inset 0 -1px 0 var(--ink); }
+.crew-input.bad { color: var(--alarm); }
+.crew-x { margin-top: 0; }
+.crew-page .opt-list { margin-top: 4px; }
+
+.pass-page { min-height: 70vh; display: flex; flex-direction: column; justify-content: center; align-items: flex-start; }
+.pass-title {
+  font-family: var(--f-display); font-weight: 400; font-size: clamp(52px, 9vw, 140px); line-height: 0.92; letter-spacing: -0.02em;
+  margin: 18px 0 22px; max-width: 1200px; overflow-wrap: anywhere;
+}
+.pass-title em { font-style: italic; }
+.pass-small { display: block; font-size: 0.3em; font-style: italic; color: var(--ink-2); line-height: 1.2; margin-bottom: 10px; }
+.pass-roster { display: flex; flex-wrap: wrap; margin-top: 30px; border-top: 1px solid var(--line); width: 100%; max-width: 900px; }
+.pass-roster li { flex: 1 1 140px; display: grid; grid-template-columns: auto 1fr; gap: 2px 10px; padding: 14px 18px 14px 0; position: relative; }
+.pass-roster li::before { content: ''; position: absolute; left: 0; top: -1px; height: 2px; width: 0; background: var(--ink); transition: width 0.5s var(--ease-out); }
+.pass-roster li.now::before { width: calc(100% - 18px); }
+.pass-roster .crew-no { padding-top: 4px; }
+.pr-name { font-size: 17px; font-weight: 600; overflow-wrap: anywhere; }
+.pass-roster li.done .pr-name { color: var(--ink-2); }
+.pr-state { grid-column: 2; font-family: var(--f-mono); font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-3); }
+.pass-roster li.now .pr-state { color: var(--ink); }
+
+.board { border-top: 1px solid var(--ink); margin-bottom: 56px; }
+.board li {
+  display: grid; grid-template-columns: 54px minmax(0, 1fr) 96px 80px 80px 110px; gap: 16px; align-items: baseline;
+  padding: 18px 0; border-bottom: 1px solid var(--line-2); animation: rise 0.5s var(--ease-out) both;
+}
+.bd-rank { font-family: var(--f-mono); font-size: 11px; color: var(--ink-3); }
+.bd-name { font-family: var(--f-display); font-size: clamp(28px, 3vw, 42px); line-height: 1; overflow-wrap: anywhere; }
+.board li.first .bd-name { font-style: italic; }
+.bd-stat { font-family: var(--f-mono); font-size: 14px; }
+.bd-stat em, .best-list em { display: block; font-style: normal; font-size: 9.5px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-3); margin-bottom: 2px; }
+.bd-stat.bad, .bd-stat.bad em { color: var(--alarm); }
+.bd-score { font-family: var(--f-display); font-size: clamp(40px, 4.4vw, 60px); line-height: 0.9; text-align: right; font-variant-numeric: tabular-nums; }
+.board-sec { margin-bottom: 52px; }
+.board-table { min-width: 520px; }
+.cell-note { display: block; font-family: var(--f-body); font-size: 12px; color: var(--ink-3); margin-top: 2px; }
+.vs-table td.bd-case { font-family: var(--f-body); font-size: 14.5px; }
+
+.share { display: contents; }
+.share-note, .share-manual { flex-basis: 100%; order: 10; }
+.share-note { font-size: 14px; color: var(--ink-2); }
+.share-manual .mono-label { margin-bottom: 6px; }
+.share-field {
+  width: 100%; padding: 10px 0; border: 0; border-bottom: 1px solid var(--ink); background: transparent; color: var(--ink);
+  font-family: var(--f-mono); font-size: 12px; outline: none;
+}
+.compare { margin-top: 30px; padding-top: 18px; border-top: 1px solid var(--line); }
+.compare-verdict { font-family: var(--f-display); font-size: clamp(28px, 3vw, 40px); line-height: 1.05; margin-bottom: 14px; }
+.compare-table td { width: 42%; }
+.vs-lessons { display: grid; gap: 4px; }
+.vs-lessons a { font-family: var(--f-body); font-size: 13.5px; }
+.vs-lessons.bad a { color: var(--alarm-ink); }
+
+.spec-list { border-top: 1px solid var(--line-2); margin-bottom: 18px; }
+.spec-list li { display: grid; grid-template-columns: 110px minmax(0, 1fr); gap: 12px; padding: 9px 0; border-bottom: 1px solid var(--line-2); font-size: 14.5px; }
+.spec-list span { font-family: var(--f-mono); font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-3); padding-top: 3px; }
+.spec-hits { font-size: 14.5px; color: var(--ink-2); }
+.spec-hits a { color: var(--alarm-ink); }
+.challenge .result-score { margin-bottom: 26px; }
+
+.best { margin-top: 40px; }
+.best-note, .best-empty { font-size: 14px; color: var(--ink-2); max-width: 760px; margin-bottom: 18px; }
+.best-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 30px clamp(24px, 4vw, 64px); }
+.best-title { font-family: var(--f-display); font-size: 28px; line-height: 1; margin-bottom: 10px; }
+.best-list { border-top: 1px solid var(--line); }
+.best-list li { display: grid; grid-template-columns: 32px minmax(0, 1fr) 72px 60px 56px; gap: 10px; align-items: baseline; padding: 10px 0; border-bottom: 1px solid var(--line-2); font-family: var(--f-mono); font-size: 13px; }
+.best-list em { margin: 2px 0 0; }
+.b-rank { font-size: 10.5px; color: var(--ink-3); }
+.b-who { font-family: var(--f-body); font-size: 14.5px; overflow-wrap: anywhere; }
+.b-score { font-family: var(--f-display); font-size: 28px; line-height: 1; text-align: right; }
+
+@media (max-width: 1000px) {
+  .best-grid { grid-template-columns: minmax(0, 1fr); }
+  .board li { grid-template-columns: 40px minmax(0, 1fr) repeat(3, 70px) 80px; gap: 10px; }
+}
+@media (max-width: 600px) {
+  .paths { grid-template-columns: minmax(0, 1fr); }
+  .path + .path { padding-left: 0; border-left: 0; border-top: 1px solid var(--line-2); margin-top: 12px; }
+  .board li { grid-template-columns: 30px repeat(3, minmax(0, 1fr)) auto; gap: 8px 10px; }
+  .board li .bd-rank { grid-row: 1 / span 2; grid-column: 1; }
+  .board li .bd-name { grid-row: 1; grid-column: 2 / span 3; }
+  .board li .bd-score { grid-row: 1 / span 2; grid-column: 5; align-self: center; }
+  .board li .bd-stat { grid-row: 2; }
+  .board li .bd-stat:nth-of-type(3) { grid-column: 2; }
+  .board li .bd-stat:nth-of-type(4) { grid-column: 3; }
+  .board li .bd-stat:nth-of-type(5) { grid-column: 4; }
+  .best-list li { grid-template-columns: 26px minmax(0, 1fr) 56px 46px 40px; gap: 8px; font-size: 12px; }
+  .b-score { font-size: 24px; }
+  .spec-list li { grid-template-columns: 90px minmax(0, 1fr); }
+  .crew-names li { grid-template-columns: 30px minmax(0, 1fr) auto; }
+  .board-table { min-width: 0; table-layout: fixed; }
+  .board-table th, .board-table td { padding-right: 6px; overflow-wrap: anywhere; }
+  .vs-table.board-table td { font-size: 11px; }
+  .vs-table.board-table tbody th { width: 52px; font-size: 9px; letter-spacing: 0.08em; }
+  .vs-table.board-table thead th { font-size: 9px; letter-spacing: 0.06em; overflow-wrap: anywhere; }
+  .vs-table.board-table td.bd-case { font-size: 13px; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
 }

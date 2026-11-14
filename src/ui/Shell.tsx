@@ -47,7 +47,7 @@ function ThemeToggle() {
 export function Shell({ route, children }: { route: string; children: ReactNode }) {
   const streak = useGame((s) => s.streak);
   const top = route.split('/')[1] || '';
-  const flying = ['brief', 'hangar', 'review', 'flight', 'refly'].includes(top);
+  const flying = ['brief', 'hangar', 'review', 'flight', 'refly', 'crew', 'fly'].includes(top);
   return (
     <div className="shell">
       <header className="topbar">

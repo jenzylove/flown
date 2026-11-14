@@ -9,6 +9,8 @@ import CaseFile from './ui/screens/CaseFile';
 import Sky from './ui/screens/Sky';
 import Proof from './ui/screens/Proof';
 import Lab from './ui/screens/Lab';
+import Crew from './ui/screens/Crew';
+import Challenge from './ui/screens/Challenge';
 
 function Screen({ route }: { route: string }) {
   const [, rawHead, arg] = route.split('/');
@@ -33,6 +35,10 @@ function Screen({ route }: { route: string }) {
       return <Sky />;
     case 'proof':
       return <Proof />;
+    case 'crew':
+      return <Crew view={arg ?? ''} />;
+    case 'fly':
+      return <Challenge rest={route.slice('/fly/'.length)} />;
     case 'lab':
       return <Lab />;
     default:
