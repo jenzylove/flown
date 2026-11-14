@@ -12,6 +12,8 @@ import Proof from './ui/screens/Proof';
 import Lab from './ui/screens/Lab';
 import Crew from './ui/screens/Crew';
 import Challenge from './ui/screens/Challenge';
+import About from './ui/screens/About';
+import Privacy from './ui/screens/Privacy';
 
 function Screen({ route }: { route: string }) {
   const [, rawHead, arg] = route.split('/');
@@ -45,6 +47,10 @@ function Screen({ route }: { route: string }) {
       return <Challenge rest={route.slice('/fly/'.length)} />;
     case 'lab':
       return <Lab />;
+    case 'about':
+      return <About />;
+    case 'privacy':
+      return <Privacy />;
     default:
       return <Landing />;
   }

@@ -48,7 +48,7 @@ export function Shell({ route, children }: { route: string; children: ReactNode 
   const streak = useGame((s) => s.streak);
   const top = route.split('/')[1] || '';
   const flying = ['play', 'brief', 'hangar', 'review', 'flight', 'refly', 'crew', 'fly'].includes(top);
-  const APP = ['juno', 'play', 'brief', 'hangar', 'refly', 'review', 'flight', 'case', 'sky', 'proof', 'crew', 'fly', 'lab'];
+  const APP = ['juno', 'play', 'brief', 'hangar', 'refly', 'review', 'flight', 'case', 'sky', 'proof', 'crew', 'fly', 'lab', 'about', 'privacy'];
   if (!APP.includes(top.split('?')[0])) {
     // The landing page brings its own top bar and footer.
     return <div className="shell">{children}</div>;

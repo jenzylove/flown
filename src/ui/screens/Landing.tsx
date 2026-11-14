@@ -2,32 +2,36 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode, RefObject } from 'react';
 import {
   LESSONS, PLAYABLE_LESSONS, BRIEFS, MAX_PINS, COLD_OPENS, REAL_CRAFT, REFERENCE_DESIGNS,
-  calibration, dailyBrief, encodeShare, lessonById, partById,
+  calibration, dailyBrief, encodeShare, lessonById,
 } from '../eng';
-import type { Design, SlotId, PartLook, Instrument } from '../eng';
+import type { SlotId, PartLook, Instrument } from '../eng';
 import { Craft3D, ThemeToggle } from '../Shell';
 import { CrisisDecision } from '../parts/CrisisDecision';
-import { looksOf, instrumentLooks, SLOT_NAME } from '../craftLooks';
+import { looksOf, instrumentLooks } from '../craftLooks';
 import { useGame } from '../store';
 import { go, href } from '../router';
 import { kg, n0, prettyDate, two } from '../format';
 import { layout, shortName } from './Sky';
+import { findHeroStory } from '../heroStory';
 
 const IG_URL = 'https://www.oversight.gov/sites/default/files/oig-reports/IG-12-012.pdf';
 const SWARTWOUT_URL = 'https://thespacereview.com/article/3047/1';
 const REPO_URL = 'https://github.com/jenzylove/flown';
+const ANSWER_KEY_URL = REPO_URL + '/blob/master/src/engine/__tests__/answer-key.test.ts';
 
 /* ------------------------------------------------------------------ */
 /* figures, all read from the engine and data                          */
 /* ------------------------------------------------------------------ */
 
 const SOURCE_COUNT = new Set(LESSONS.flatMap((l) => l.sources.map((s) => s.url))).size;
-const FIGURES = [
-  { n: LESSONS.length, label: 'real failures, all sourced' },
-  { n: PLAYABLE_LESSONS.length, label: 'can strike in play' },
-  { n: BRIEFS.length, label: 'missions on real craft' },
-  { n: SOURCE_COUNT, label: 'public sources linked' },
-];
+const SOURCED = LESSONS.filter((l) => l.sources.length > 0).length;
+
+function median(xs: number[]) {
+  if (!xs.length) return null;
+  const s = [...xs].sort((a, b) => a - b);
+  const m = Math.floor(s.length / 2);
+  return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
+}
 
 /* ------------------------------------------------------------------ */
 /* small hooks                                                         */
@@ -105,130 +109,248 @@ function useFlyToday() {
   };
 }
 
+/** A number that counts up once, the first time it is on screen. Reduced motion shows the end value. */
+function Count({ to, format = n0 }: { to: number; format?: (v: number) => string }) {
+  const ref = useRef<HTMLSpanElement>(null);
+  const [value, setValue] = useState(to);
+  useEffect(() => {
+    const node = ref.current;
+    if (!node || reducedMotion() || typeof IntersectionObserver === 'undefined') return;
+    setValue(0);
+    let raf = 0;
+    const seen = new IntersectionObserver(
+      ([entry]) => {
+        if (!entry?.isIntersecting) return;
+        seen.disconnect();
+        const start = performance.now();
+        const step = (now: number) => {
+          const t = Math.min(1, (now - start) / 1200);
+          setValue(Math.round(to * (1 - Math.pow(1 - t, 3))));
+          if (t < 1) raf = requestAnimationFrame(step);
+        };
+        raf = requestAnimationFrame(step);
+      },
+      { threshold: 0.4 },
+    );
+    seen.observe(node);
+    return () => {
+      seen.disconnect();
+      cancelAnimationFrame(raf);
+    };
+  }, [to]);
+  return <span ref={ref}>{format(value)}</span>;
+}
+
 /* ------------------------------------------------------------------ */
-/* craft designs used on this page                                     */
+/* 00 hero: one real flight, played twice                              */
 /* ------------------------------------------------------------------ */
 
-const HERO_DESIGN: Design = {
-  ...REFERENCE_DESIGNS.jupiter,
-  parts: { ...REFERENCE_DESIGNS.jupiter.parts, antenna: 'hga_deployable' },
-};
-const STEP_DESIGN: Design = {
-  ...REFERENCE_DESIGNS['mars-orbit'],
-  parts: { ...REFERENCE_DESIGNS['mars-orbit'].parts, power: 'panel_wings', antenna: 'hga_fixed' },
-};
+const STORY = findHeroStory();
+
 type Piece = SlotId | 'inst';
 const HERO_ORDER: Piece[] = ['power', 'battery', 'attitude', 'propulsion', 'computer', 'thermal', 'inst', 'antenna'];
-const STEP_ORDER: Piece[] = ['power', 'antenna', 'battery', 'attitude', 'propulsion', 'computer', 'thermal', 'inst'];
+/** When each of the five steps starts, in ms. The story ends about six seconds in. */
+const STORY_AT = [0, 1500, 2700, 4000, 5100] as const;
+const LAST = STORY_AT.length - 1;
 
-function partial(full: Partial<Record<SlotId, PartLook>>, inst: Instrument['look'][], order: Piece[], n: number) {
+function partial(full: Partial<Record<SlotId, PartLook>>, inst: Instrument['look'][], n: number) {
   const looks: Partial<Record<SlotId, PartLook>> = {};
   let instruments: Instrument['look'][] = [];
-  order.slice(0, n).forEach((p) => {
+  HERO_ORDER.slice(0, n).forEach((p) => {
     if (p === 'inst') instruments = inst;
     else looks[p] = full[p];
   });
   return { looks, instruments };
 }
 
-/** Counts up to `max`, one step every `ms`, restarting whenever `runKey` changes. */
-function useAssembly(max: number, ms: number, runKey: unknown, instant: boolean) {
-  const [n, setN] = useState(instant ? max : 0);
+function useStory(ready: boolean) {
+  const ref = useRef<HTMLElement>(null);
+  const [step, setStep] = useState(-1);
+  const [run, setRun] = useState(0);
+  const [assembled, setAssembled] = useState(0);
+  const [reopen, setReopen] = useState(false);
+  const reduced = useMemo(reducedMotion, []);
+
   useEffect(() => {
-    if (instant) {
-      setN(max);
+    if (!ready) return;
+    if (reduced) {
+      setStep(LAST);
+      setAssembled(HERO_ORDER.length);
       return;
     }
-    setN(0);
-    let i = 0;
-    const id = window.setInterval(() => {
-      i += 1;
-      setN(i);
-      if (i >= max) window.clearInterval(id);
-    }, ms);
-    return () => window.clearInterval(id);
-  }, [max, ms, runKey, instant]);
-  return n;
+    setStep(-1);
+    setAssembled(0);
+    let timers: number[] = [];
+    const play = () => {
+      timers = STORY_AT.map((at, i) => window.setTimeout(() => setStep(i), at + 60));
+      // parts snap on one by one during step one
+      HERO_ORDER.forEach((_, i) => timers.push(window.setTimeout(() => setAssembled(i + 1), 120 + i * 150)));
+      // step five: lift the dish off and put it back, so it unfolds again from closed
+      timers.push(window.setTimeout(() => setReopen(true), STORY_AT[LAST] + 60));
+      timers.push(window.setTimeout(() => setReopen(false), STORY_AT[LAST] + 160));
+    };
+    const node = ref.current;
+    if (!node || typeof IntersectionObserver === 'undefined') {
+      play();
+      return () => timers.forEach((t) => window.clearTimeout(t));
+    }
+    const seen = new IntersectionObserver(
+      ([entry]) => {
+        if (!entry?.isIntersecting) return;
+        seen.disconnect();
+        play();
+      },
+      { threshold: 0.4 },
+    );
+    seen.observe(node);
+    return () => {
+      seen.disconnect();
+      timers.forEach((t) => window.clearTimeout(t));
+    };
+  }, [run, ready, reduced]);
+
+  return { ref, step, run, assembled, reopen, reduced, replay: () => setRun((n) => n + 1) };
 }
 
-/* ------------------------------------------------------------------ */
-/* 00 hero craft                                                       */
-/* ------------------------------------------------------------------ */
+type LogLine = { k: string; t: string; alarm?: boolean; good?: boolean };
 
-const GALILEO = lessonById('galileo-hga-stuck-ribs');
+/** The flight log lines printed by the end of each step, straight from the engine runs. */
+function storyLog(): LogLine[][] {
+  if (!STORY) return [[], [], [], [], []];
+  const s = STORY;
+  const save = s.fixEvents.find((e) => e.kind === 'save');
+  const end = s.fixEvents[s.fixEvents.length - 1];
+  return [
+    [
+      { k: 'BRIEF', t: s.briefTitle },
+      { k: 'ANTENNA', t: s.dishName },
+    ],
+    [
+      { k: 'TEST', t: s.skipLabel },
+      { k: 'SAVED', t: `${n0(s.skipDays)} days` },
+    ],
+    [
+      { k: 'SEED', t: String(s.seed) },
+      ...s.failEvents.map((e) => ({
+        k: `DAY ${n0(e.day)}`,
+        t: e.text,
+        alarm: e.kind === 'crisis' || e.kind === 'failure',
+      })),
+    ],
+    [
+      { k: 'PIN', t: 'Antenna', alarm: true },
+      { k: 'FIX', t: s.fix.label },
+      { k: 'COST', t: `$${n0(s.fix.costM)}M and ${n0(s.fix.scheduleDays)} days` },
+    ],
+    [
+      { k: 'REFLY', t: `Same seed, ${s.seed}` },
+      ...(save ? [{ k: `DAY ${n0(save.day)}`, t: save.text, good: true }] : []),
+      ...(end ? [{ k: `DAY ${n0(end.day)}`, t: end.text }] : []),
+      { k: 'SCIENCE', t: `${n0(s.sciencePct)}%`, good: true },
+    ],
+  ];
+}
 
-function HeroCraft() {
-  const fig = useRef<HTMLElement>(null);
-  const visible = useInView(fig, '120px');
-  const reduced = useMemo(reducedMotion, []);
-  const narrow = useMedia('(max-width: 600px)');
+const LOG = storyLog();
+
+function storyNotes(): ReactNode[] {
+  if (!STORY) return ['', '', '', '', ''];
+  const s = STORY;
+  return [
+    <>You build a {s.briefTitle.replace(/^Orbit /, '')} probe with an unfolding dish</>,
+    <>You skip the deployment test to save {n0(s.skipDays)} days</>,
+    <>Day {n0(s.crisisDay)}: the dish jams half open. {s.missionName}, {s.year}.</>,
+    <>You pin the antenna and pay for the fix</>,
+    <>Same flight again: the fix holds. Caught before launch.</>,
+  ];
+}
+const NOTES = storyNotes();
+
+function HeroStory() {
   const [mount, setMount] = useState(false);
   // Let the headline paint first, then fetch three.js.
   useEffect(() => {
     const w = window as Window & { requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => number };
-    if (w.requestIdleCallback) {
-      w.requestIdleCallback(() => setMount(true), { timeout: 900 });
-    } else {
-      window.setTimeout(() => setMount(true), 250);
-    }
+    if (w.requestIdleCallback) w.requestIdleCallback(() => setMount(true), { timeout: 900 });
+    else window.setTimeout(() => setMount(true), 250);
   }, []);
+  const { ref, step, run, assembled, reopen, reduced, replay } = useStory(mount);
+  const visible = useInView(ref, '120px');
+  const narrow = useMedia('(max-width: 600px)');
+  const logRef = useRef<HTMLOListElement>(null);
 
-  const full = useMemo(() => looksOf(HERO_DESIGN), []);
-  const inst = useMemo(() => instrumentLooks(HERO_DESIGN), []);
-  const n = useAssembly(HERO_ORDER.length, 520, mount, reduced);
-  const built = n >= HERO_ORDER.length;
-  const [jam, setJam] = useState(0);
+  const full = useMemo(() => (STORY ? looksOf(STORY.design) : {}), []);
+  const inst = useMemo(() => (STORY ? instrumentLooks(STORY.design) : []), []);
+  const n = step < 0 ? 0 : step === 0 ? assembled : HERO_ORDER.length;
+  const built = partial(full, inst, n);
+  const looks = step === LAST && reopen ? { ...built.looks, antenna: undefined } : built.looks;
+  const jammed = step === 2 || step === 3;
+  const pins = step === 3 ? [{ slot: 'antenna' as SlotId, label: STORY ? `Pinned: fix for $${n0(STORY.fix.costM)}M` : 'Pinned' }] : [];
+  const lines = step < 0 ? [] : LOG.slice(0, step + 1).flat();
+
   useEffect(() => {
-    if (!built || !mount) return;
-    if (reduced) {
-      setJam(1);
-      return;
-    }
-    const first = window.setTimeout(() => setJam(1), 1600);
-    const loop = window.setInterval(() => setJam((j) => j + 1), 9000);
-    return () => {
-      window.clearTimeout(first);
-      window.clearInterval(loop);
-    };
-  }, [built, mount, reduced]);
+    const el = logRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, [lines.length]);
 
-  const { looks, instruments } = partial(full, inst, HERO_ORDER, n);
-  const fitting = HERO_ORDER[Math.min(n, HERO_ORDER.length - 1)];
-  const label = built
-    ? jam > 0 ? 'Failure replay' : 'Craft complete'
-    : `Fitting ${fitting === 'inst' ? 'instruments' : SLOT_NAME[fitting].toLowerCase()}`;
-
+  if (!STORY) return null;
+  const done = step >= LAST;
   return (
-    <figure className="lp-hero-fig" ref={fig}>
-      <div className="lp-hero-canvas">
-        {mount && (
-          <Craft3D
-            className="lp-craft"
-            looks={looks}
-            instruments={instruments}
-            anim={jam > 0 ? 'antenna_jam' : 'none'}
-            animKey={jam}
-            autoRotate={!reduced}
-            paused={!visible}
-            distance={narrow ? 6.4 : 9.6}
-            pins={jam > 0 && GALILEO ? [{ slot: 'antenna', label: `${GALILEO.mission} ${GALILEO.year}` }] : []}
-          />
-        )}
-      </div>
-      <span className="frame-corner tl" /><span className="frame-corner tr" /><span className="frame-corner bl" /><span className="frame-corner br" />
-      <span className={'lp-fig-label' + (jam > 0 ? ' alarm' : '')}>
-        {label} &middot; {two(Math.min(n, HERO_ORDER.length))}/{two(HERO_ORDER.length)}
-      </span>
-      {GALILEO && (
-        <figcaption className={'lp-jam-callout' + (jam > 0 ? ' on' : '')}>
-          <svg className="lp-leader" viewBox="0 0 60 30" aria-hidden="true"><path d="M0 29 L22 2 L60 2" /></svg>
-          <span>
-            <b>{GALILEO.mission}, {GALILEO.year}.</b> The umbrella dish jammed half open. Every failure in Flown happened like this one.{' '}
-            <a href={href('/case/' + GALILEO.id)}>Read the case</a>
-          </span>
+    <div className="lp-story">
+      <p className={'lp-story-note' + (step === 2 ? ' alarm' : '')} aria-live="polite">
+        <span className="lp-story-no">{two(Math.max(1, step + 1))}/{two(STORY_AT.length)}</span>
+        <span key={step + ':' + run} className="lp-story-text">{NOTES[Math.max(0, step)]}</span>
+        <button type="button" className={'lp-replay' + (done && !reduced ? ' on' : '')} onClick={replay} disabled={!done || reduced} aria-hidden={!done || reduced}>
+          Replay
+        </button>
+      </p>
+      <figure className={'lp-hero-fig' + (jammed ? ' is-jam' : '') + (done ? ' is-done' : '')} ref={ref}>
+        <div className="lp-hero-canvas">
+          {mount && (
+            <Craft3D
+              className="lp-craft"
+              looks={looks}
+              instruments={built.instruments}
+              anim={jammed ? 'antenna_jam' : 'none'}
+              animKey={'jam' + run}
+              highlight={step === 1 ? 'antenna' : null}
+              autoRotate={!reduced}
+              paused={!visible}
+              distance={narrow ? 6.8 : 8.8}
+              pins={pins}
+              beam={done}
+            />
+          )}
+          <span className="frame-corner tl" /><span className="frame-corner tr" /><span className="frame-corner bl" /><span className="frame-corner br" />
+          <div className={'lp-star' + (done ? ' on' : '')} aria-hidden={!done}>
+            <svg viewBox="0 0 40 40" aria-hidden="true">
+              <circle cx="20" cy="20" r="16" className="lp-star-halo" />
+              <path d="M20 6 V34 M6 20 H34" className="lp-star-spike" />
+              <circle cx="20" cy="20" r="4.4" className="lp-star-core" />
+            </svg>
+            <span>
+              <b>{STORY.missionName} {STORY.year}</b>
+              New bright star in your sky
+            </span>
+          </div>
+        </div>
+        <figcaption className="lp-log" aria-label="Flight log from the engine run">
+          <p className="lp-log-head">
+            <span>Flight log</span>
+            <span>{STORY.briefTitle} &middot; seed {STORY.seed}</span>
+          </p>
+          <ol ref={logRef}>
+            {lines.map((l, i) => (
+              <li key={i + ':' + run} className={(l.alarm ? 'alarm' : '') + (l.good ? ' good' : '')}>
+                <span className="lp-log-k">{l.k}</span>
+                <span className="lp-log-t">{l.t}</span>
+              </li>
+            ))}
+            {step < LAST && <li className="lp-log-cursor" aria-hidden="true"><span className="lp-log-k" /><span className="lp-log-t">&#9608;</span></li>}
+          </ol>
         </figcaption>
-      )}
-    </figure>
+      </figure>
+    </div>
   );
 }
 
@@ -236,87 +358,24 @@ function HeroCraft() {
 /* 02 how it works                                                     */
 /* ------------------------------------------------------------------ */
 
-const LUCY = lessonById('lucy-solar-array-latch');
-const FIXED_PANELS = partById('panel_large');
-
-const STEPS: { t: string; p: ReactNode; cap: string; alarm?: boolean }[] = [
+const STEPS: { t: string; p: ReactNode }[] = [
   {
     t: 'Build to a real brief',
-    p: (
-      <>
-        Pick one of {BRIEFS.length} missions modeled on real ones, from a Mars orbiter to a Pluto flyby. Snap on power, antenna, engine, computer and
-        instruments inside a budget close to the real one and a dry mass limit for your rocket.
-      </>
-    ),
-    cap: 'Parts snap on, one by one',
+    p: <>Pick one of {BRIEFS.length} missions modeled on real ones. Snap on power, antenna, engine and instruments inside a real budget.</>,
   },
   {
     t: 'Pin what worries you',
-    p: (
-      <>
-        Before launch you hold a review. You get {MAX_PINS} pins. Put them on the parts and choices you think will fail, and pay to fix the ones you
-        believe in. Pin something that carries no real risk and it counts against you.
-      </>
-    ),
-    cap: 'Orange pins mark the risks you see',
-    alarm: true,
+    p: <>At the review you get {MAX_PINS} pins. Put them on what you think will fail and pay to fix it. A pin on nothing counts against you.</>,
   },
   {
     t: 'Fly into real failures',
-    p: (
-      <>
-        {PLAYABLE_LESSONS.length} failures that really happened can strike your craft in flight. Each one plays out on your model, and in a crisis you
-        get the same choices the real team had.
-      </>
-    ),
-    cap: LUCY ? `Real failure: ${LUCY.mission}, ${LUCY.year}. A solar wing did not latch.` : 'A real failure strikes',
-    alarm: true,
+    p: <>{PLAYABLE_LESSONS.length} failures that really happened can strike in flight. In a crisis you get the choices the real team had.</>,
   },
   {
-    t: 'Read the case, fix it, fly again',
-    p: (
-      <>
-        Every failure opens the real case file: what happened, why, and what NASA did. Change the design, refly the same seed, and prove the lesson stuck.
-      </>
-    ),
-    cap: FIXED_PANELS ? `The fix holds. ${FIXED_PANELS.name}: ${FIXED_PANELS.blurb}` : 'The fix holds',
+    t: 'Read the case, fly again',
+    p: <>Every failure opens its real case file. Change the design, refly the same seed, and prove the lesson stuck.</>,
   },
 ];
-
-function StepCraft({ step, visible }: { step: number; visible: boolean }) {
-  const reduced = useMemo(reducedMotion, []);
-  const design = useMemo<Design>(
-    () => (step >= 3 ? { ...STEP_DESIGN, parts: { ...STEP_DESIGN.parts, power: 'panel_large' } } : STEP_DESIGN),
-    [step],
-  );
-  const full = useMemo(() => looksOf(design), [design]);
-  const inst = useMemo(() => instrumentLooks(design), [design]);
-  const n = useAssembly(STEP_ORDER.length, 380, step === 0 ? `a${visible}` : 'built', reduced || step > 0);
-  const { looks, instruments } = partial(full, inst, STEP_ORDER, step === 0 ? n : STEP_ORDER.length);
-  const pins =
-    step === 1
-      ? [
-          { slot: 'power' as SlotId, label: 'Wing latch' },
-          { slot: 'attitude' as SlotId, label: 'Wheels' },
-          { slot: 'propulsion' as SlotId, label: 'Fuel margin' },
-        ]
-      : step === 2 && LUCY
-        ? [{ slot: 'power' as SlotId, label: `${LUCY.mission} ${LUCY.year}` }]
-        : [];
-  return (
-    <Craft3D
-      className="lp-craft"
-      looks={looks}
-      instruments={instruments}
-      anim={step === 2 ? 'panel_stuck' : 'none'}
-      animKey={step}
-      pins={pins}
-      autoRotate={!reduced}
-      paused={!visible}
-      distance={8.2}
-    />
-  );
-}
 
 function StepGlyph({ i }: { i: number }) {
   return (
@@ -356,69 +415,6 @@ function StepGlyph({ i }: { i: number }) {
         </g>
       )}
     </svg>
-  );
-}
-
-function HowItWorks() {
-  const [step, setStep] = useState(0);
-  const wide = useMedia('(min-width: 1001px)');
-  const frame = useRef<HTMLDivElement>(null);
-  const visible = useInView(frame, '200px');
-  const [seen, setSeen] = useState(false);
-  useEffect(() => {
-    if (visible) setSeen(true);
-  }, [visible]);
-  const items = useRef<(HTMLLIElement | null)[]>([]);
-
-  useEffect(() => {
-    if (typeof IntersectionObserver === 'undefined') return;
-    const io = new IntersectionObserver(
-      (es) => {
-        for (const e of es) {
-          if (e.isIntersecting) setStep(Number((e.target as HTMLElement).dataset.step));
-        }
-      },
-      { rootMargin: '-45% 0px -45% 0px' },
-    );
-    items.current.forEach((el) => el && io.observe(el));
-    return () => io.disconnect();
-  }, []);
-
-  return (
-    <div className="lp-how">
-      {wide && (
-        <div className="lp-how-stage" ref={frame}>
-          <div className="lp-how-frame">
-            {seen && <StepCraft step={step} visible={visible} />}
-            <span className="frame-corner tl" /><span className="frame-corner tr" /><span className="frame-corner bl" /><span className="frame-corner br" />
-            <ol className="lp-how-ticks" aria-hidden="true">
-              {STEPS.map((s, i) => (
-                <li key={s.t} className={i === step ? 'on' : i < step ? 'past' : ''}>{two(i + 1)}</li>
-              ))}
-            </ol>
-            <p key={step} className={'lp-how-cap' + (STEPS[step].alarm ? ' alarm' : '')}>{STEPS[step].cap}</p>
-          </div>
-        </div>
-      )}
-      <ol className="lp-steps">
-        {STEPS.map((s, i) => (
-          <li
-            key={s.t}
-            data-step={i}
-            ref={(el) => {
-              items.current[i] = el;
-            }}
-            className={'lp-step' + (i === step ? ' on' : '')}
-          >
-            <span className="lp-step-no">{two(i + 1)}</span>
-            {!wide && <StepGlyph i={i} />}
-            <h3>{s.t}</h3>
-            <p>{s.p}</p>
-            {!wide && <p className={'lp-step-cap' + (s.alarm ? ' alarm' : '')}>{s.cap}</p>}
-          </li>
-        ))}
-      </ol>
-    </div>
   );
 }
 
@@ -488,21 +484,15 @@ function WallItem({ id, hidden }: { id: string; hidden?: boolean }) {
 }
 
 function Wall() {
-  const rows = useMemo(() => {
-    const a = LESSONS.filter((_, i) => i % 2 === 0).map((l) => l.id);
-    const b = LESSONS.filter((_, i) => i % 2 === 1).map((l) => l.id);
-    return [a, b];
-  }, []);
+  const ids = useMemo(() => LESSONS.map((l) => l.id), []);
   return (
     <div className="lp-wall">
-      {rows.map((ids, r) => (
-        <div key={r} className={'lp-wall-row r' + r}>
-          <ul className="lp-wall-track">
-            {ids.map((id) => <WallItem key={id} id={id} />)}
-            {ids.map((id) => <WallItem key={id + ':b'} id={id} hidden />)}
-          </ul>
-        </div>
-      ))}
+      <div className="lp-wall-row" style={{ ['--drift' as string]: `${ids.length * 6}s` }}>
+        <ul className="lp-wall-track">
+          {ids.map((id) => <WallItem key={id} id={id} />)}
+          {ids.map((id) => <WallItem key={id + ':b'} id={id} hidden />)}
+        </ul>
+      </div>
     </div>
   );
 }
@@ -517,7 +507,7 @@ const EXAMPLE_RED = ['juno-helium-check-valves', 'mars-polar-lander-leg-signal']
 function SkyPreview() {
   const narrow = useMedia('(max-width: 600px)');
   const W = narrow ? 600 : 1000;
-  const H = narrow ? 760 : 620;
+  const H = narrow ? 700 : 560;
   const stars = useMemo(() => layout(W, H), [W, H]);
   return (
     <figure className="lp-sky">
@@ -580,7 +570,15 @@ function Sec({ id, no, title, kicker, children, className }: { id: string; no: s
 
 const FAQ: { q: string; a: ReactNode }[] = [
   { q: 'Is it free?', a: 'Yes. Flown is free to play in your browser. There is nothing to buy and nothing to install.' },
-  { q: 'Do I need an account?', a: 'No. There is no sign up. Your lesson sky, streak and best flights are saved in this browser on this device only.' },
+  {
+    q: 'Do I need an account?',
+    a: (
+      <>
+        No. There is no sign up. Your lesson sky, streak and best flights are saved in this browser on this device only. Read the{' '}
+        <a href={href('/privacy')}>privacy note</a>.
+      </>
+    ),
+  },
   {
     q: 'Are the failures real?',
     a: (
@@ -599,7 +597,15 @@ const FAQ: { q: string; a: ReactNode }[] = [
       </>
     ),
   },
-  { q: 'Is this a NASA product?', a: 'No. Flown was built for NASA Space Apps 2026, for the Space Mission Design Game challenge. It is not made or endorsed by NASA, and no NASA logos are used.' },
+  {
+    q: 'Is this a NASA product?',
+    a: (
+      <>
+        No. Flown was built for NASA Space Apps 2026, for the Space Mission Design Game challenge. It is not made or endorsed by NASA, and no NASA logos
+        are used. <a href={href('/about')}>About Flown</a>.
+      </>
+    ),
+  },
   {
     q: 'How do I play with friends?',
     a: (
@@ -610,16 +616,6 @@ const FAQ: { q: string; a: ReactNode }[] = [
     ),
   },
   { q: 'Does it work on a phone?', a: 'Yes. Flown runs in any modern browser on a phone, tablet or computer. The 3D craft is drawn live, and you can rotate it with a finger.' },
-  {
-    q: 'Where does the data come from?',
-    a: (
-      <>
-        Spacecraft facts from the <a href="https://nssdc.gsfc.nasa.gov/nmc/" target="_blank" rel="noreferrer">NASA Space Science Data Coordinated Archive</a>,
-        lessons from the <a href="https://llis.nasa.gov/" target="_blank" rel="noreferrer">NASA Lessons Learned Information System</a> and the reports linked on
-        each case file, and the 57% figure from the <a href={IG_URL} target="_blank" rel="noreferrer">NASA Inspector General</a>.
-      </>
-    ),
-  },
 ];
 
 export default function Landing() {
@@ -628,11 +624,13 @@ export default function Landing() {
   const flyToday = useFlyToday();
   const streak = useGame((s) => s.streak);
   const today = useMemo(() => dailyBrief(new Date()), []);
-  const cal = useMemo(() => calibration(), []);
+  const medErr = useMemo(() => {
+    const errs = calibration().filter((c) => c.errPct !== null).map((c) => Math.abs(c.errPct!));
+    return { med: median(errs), n: errs.length };
+  }, []);
   const sampleChallenge = useMemo(() => '/fly/' + encodeShare(REFERENCE_DESIGNS.jupiter, 4242), []);
-  const juno = lessonById(COLD_OPENS[0].lessonId);
 
-  // reveal on scroll
+  // reveal on scroll, once
   useEffect(() => {
     const els = root.current?.querySelectorAll('[data-reveal]') ?? [];
     if (reducedMotion() || typeof IntersectionObserver === 'undefined') {
@@ -698,58 +696,49 @@ export default function Landing() {
             <span className="lp-sec-no">00</span> A free browser game &middot; Built for NASA Space Apps 2026
           </p>
           <h1 id="hero-h" className="lp-h1 lp-rise" style={{ ['--d' as string]: '60ms' }}>
-            Design a space mission. <em>Survive NASA&rsquo;s real failures.</em>
+            Design a space mission. <em>Survive real mission failures.</em>
           </h1>
           <p className="lp-sub lp-rise" style={{ ['--d' as string]: '140ms' }}>
-            Build a spacecraft to a real mission brief, pin the risks you see before launch, then fly into failures that really happened. Every one comes
-            from NASA&rsquo;s own records, with its sources one tap away.
+            {PLAYABLE_LESSONS.length} failures from real missions can strike your craft in flight. Build to one of {BRIEFS.length} real briefs, pin
+            the risks you see before launch and pay to fix them. Every failure links to its public record.
           </p>
           <div className="cta-row lp-rise" style={{ ['--d' as string]: '220ms' }}>
             <a className="btn btn-primary lp-btn-big" href={href('/play')}>Play free, no sign up</a>
-            <Jump to="crisis" className="btn btn-ghost lp-btn-big">Try a real crisis</Jump>
+            <Jump to="how" className="btn btn-ghost lp-btn-big">How it works</Jump>
           </div>
-        </div>
-        <HeroCraft />
-        <ul className="lp-figures lp-rise" style={{ ['--d' as string]: '300ms' }} aria-label="Flown in numbers">
-          {FIGURES.map((f) => (
-            <li key={f.label}>
-              <span className="lp-fig-n">{n0(f.n)}</span>
-              <span className="lp-fig-l">{f.label}</span>
-            </li>
-          ))}
-        </ul>
-      </section>
-
-      {/* 01 problem */}
-      <Sec id="problem" no="01" kicker="The problem" title={<>The lessons exist. <em>They are not reaching people.</em></>}>
-        <div className="lp-problem">
-          <div className="lp-stat" data-reveal>
-            <span className="lp-stat-n">57%</span>
-            <p>
-              of NASA flight project managers used NASA&rsquo;s own lessons learned database, the Inspector General found. The rest built without it.
-            </p>
-            <a className="cite" href={IG_URL} target="_blank" rel="noreferrer">NASA OIG report IG 12 012, 2012</a>
-          </div>
-          <div className="lp-stat" data-reveal style={{ ['--d' as string]: '120ms' }}>
-            <span className="lp-stat-n alarm">30%</span>
-            <p>
-              of university class small satellites that reached orbit were dead on arrival, and another 15% failed early in their missions.
-            </p>
-            <a className="cite" href={SWARTWOUT_URL} target="_blank" rel="noreferrer">Swartwout study of 244 smallsats, The Space Review</a>
-          </div>
-          <p className="lp-problem-line" data-reveal>
-            Students learn spacecraft one part at a time, rarely as a whole mission that can fail in a hundred ways. Flown is for students, teachers,
-            space fans, and anyone who will one day build something that must not fail.
+          <p className="lp-quiet lp-rise" style={{ ['--d' as string]: '280ms' }}>
+            Or try <Jump to="crisis">Juno&rsquo;s real call</Jump> <span aria-hidden="true">&middot;</span>{' '}
+            <button type="button" onClick={flyToday}>Fly today&rsquo;s mission</button>
           </p>
         </div>
-      </Sec>
+        <HeroStory />
+      </section>
+
+      {/* 01 stakes */}
+      <section id="problem" className="lp-sec lp-stakes" aria-labelledby="problem-h">
+        <p className="lp-stakes-k" data-reveal><span className="lp-sec-no">01</span> The problem</p>
+        <h2 id="problem-h" className="lp-stakes-t" data-reveal>
+          NASA keeps a lesson for every failure. Only <span className="alarm">57%</span> of its own flight project managers used them.
+        </h2>
+        <a className="cite lp-stakes-cite" href={IG_URL} target="_blank" rel="noreferrer" data-reveal>NASA OIG report IG 12 012, 2012</a>
+        <p className="lp-stakes-2" data-reveal>
+          And <span className="alarm">30%</span> of university class small satellites that reached orbit were dead on arrival.{' '}
+          <a className="cite" href={SWARTWOUT_URL} target="_blank" rel="noreferrer">Swartwout study of 244 smallsats, The Space Review</a>
+        </p>
+      </section>
 
       {/* 02 how it works */}
       <Sec id="how" no="02" kicker="How it works" title={<>Four steps. <em>One loop that teaches.</em></>}>
-        <HowItWorks />
-        <div className="cta-row lp-center" data-reveal>
-          <a className="btn btn-primary" href={href('/play')}>Start a mission</a>
-        </div>
+        <ol className="lp-steps">
+          {STEPS.map((s, i) => (
+            <li key={s.t} className="lp-step" data-reveal style={{ ['--d' as string]: `${i * 90}ms` }}>
+              <span className="lp-step-no">{two(i + 1)}</span>
+              <StepGlyph i={i} />
+              <h3>{s.t}</h3>
+              <p>{s.p}</p>
+            </li>
+          ))}
+        </ol>
       </Sec>
 
       {/* 03 crisis */}
@@ -767,17 +756,13 @@ export default function Landing() {
         title={<>{LESSONS.length} real failures. <em>Not one made up.</em></>}
         className="lp-sec-wide"
       >
-        <p className="lp-lede" data-reveal>
-          Each one links to its case file with the public record behind it. {PLAYABLE_LESSONS.length} can strike your craft in play. The rest are library
-          reading in your lesson sky.
-        </p>
         <div data-reveal>
           <Wall />
         </div>
-        <div className="cta-row lp-wall-cta" data-reveal>
-          {juno && <a className="btn btn-ghost" href={href('/case/' + juno.id)}>Open a case file</a>}
-          <a className="btn btn-ghost" href={href('/proof')}>See all {LESSONS.length} with sources</a>
-        </div>
+        <p className="lp-wall-cta" data-reveal>
+          <a className="lp-arrow" href={href('/proof')}>See all {LESSONS.length} with their sources</a>
+          <span>{PLAYABLE_LESSONS.length} can strike in play. The rest are library reading in your sky.</span>
+        </p>
       </Sec>
 
       {/* 05 loop */}
@@ -799,12 +784,8 @@ export default function Landing() {
               </dd>
             </div>
             <div>
-              <dt>{MAX_PINS} pins per review</dt>
-              <dd>You cannot pin everything. Choose like a real review board.</dd>
-            </div>
-            <div>
-              <dt>Wrong pins cost you</dt>
-              <dd>A pin on something with no real risk for your craft lowers your rate, so guessing never pays.</dd>
+              <dt>{MAX_PINS} pins, and wrong pins cost you</dt>
+              <dd>You cannot pin everything, and a pin on something with no real risk lowers your rate. Choose like a real review board.</dd>
             </div>
             <div>
               <dt>Mission of the Day</dt>
@@ -832,7 +813,7 @@ export default function Landing() {
               before launch.
             </p>
             <ol className="lp-roster" aria-label="How a crew turn passes">
-              <li className="done"><span>01</span>Player one builds and flies</li>
+              <li className="done"><span>01</span>Player one flies</li>
               <li className="now"><span>02</span>Pass the device</li>
               <li><span>03</span>Crew board</li>
             </ol>
@@ -842,7 +823,7 @@ export default function Landing() {
             <p className="lp-mode-k">Challenge a friend &middot; one link</p>
             <p className="lp-mode-t">Send one link. Beat their score.</p>
             <p>
-              After any flight, copy the challenge link. Your friend sees your craft, flies the same seed against the same failures, and the scores sit side
+              After any flight, copy the challenge link. Your friend flies your craft on the same seed against the same failures, and the scores sit side
               by side.
             </p>
             <code className="lp-link" title="A sample challenge link">#{sampleChallenge}</code>
@@ -851,50 +832,31 @@ export default function Landing() {
         </div>
       </Sec>
 
-      {/* 07 proof */}
-      <Sec id="proof" no="07" kicker="Proof" title={<>What is real, <em>and what is simplified.</em></>}>
-        <div className="lp-proof">
-          <div className="lp-truth" data-reveal>
-            <div className="lp-truth-col">
-              <p className="mono-label">Real</p>
-              <ul>
-                <li><b>{LESSONS.length} failures</b> and their {SOURCE_COUNT} public sources</li>
-                <li><b>Crisis decisions</b> and the call NASA really made</li>
-                <li><b>Spacecraft facts</b>: mass, rocket and launch date from NASA NSSDCA</li>
-                <li><b>Mission budgets</b>, close to the real ones</li>
-              </ul>
-            </div>
-            <div className="lp-truth-col">
-              <p className="mono-label">Simplified for play</p>
-              <ul>
-                <li><b>Part values</b>: mass, power and cost are teaching values</li>
-                <li><b>Failure chances</b>: how often a real failure strikes</li>
-                <li><b>Dry mass limits</b> for each rocket</li>
-              </ul>
-            </div>
-          </div>
-          <div className="lp-cal" data-reveal>
-            <p className="mono-label">Sizing check: a Flown design built like each real craft, weighed by the same rules you play with</p>
-            <div className="table-scroll">
-              <table className="proof-table lp-cal-table">
-                <thead>
-                  <tr><th>Real craft</th><th>NSSDCA</th><th>Flown</th><th>Error</th></tr>
-                </thead>
-                <tbody>
-                  {cal.map((c) => (
-                    <tr key={c.brief}>
-                      <td>{c.source ? <a href={c.source} target="_blank" rel="noreferrer">{c.craft}</a> : c.craft}</td>
-                      <td>{c.realMassKg != null ? kg(c.realMassKg) : 'Not listed'}</td>
-                      <td>{kg(c.flownMassKg)}</td>
-                      <td>{c.errPct === null ? 'n/a' : `${Math.abs(c.errPct)}%${c.errPct > 0 ? ' over' : c.errPct < 0 ? ' under' : ''}`}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            <p className="lp-cal-note">Every row is shown, misses included. NSSDCA lists dry mass for some craft and launch mass for others.</p>
-            <a className="btn btn-ghost" href={href('/proof')}>Open the full proof page</a>
-          </div>
+      {/* 07 measured */}
+      <Sec id="proof" no="07" kicker="Proof" title={<>Measured, <em>not guessed.</em></>}>
+        <ul className="lp-measured" aria-label="Flown, measured">
+          <li data-reveal>
+            <span className="lp-m-n"><Count to={PLAYABLE_LESSONS.length} /><small>/{PLAYABLE_LESSONS.length}</small></span>
+            <span className="lp-m-l">real failures in play, each proven to strike a matching design and to be stopped by its fix on the same seed</span>
+            <a className="cite" href={ANSWER_KEY_URL} target="_blank" rel="noreferrer">The answer key test</a>
+          </li>
+          <li data-reveal style={{ ['--d' as string]: '100ms' }}>
+            <span className="lp-m-n"><Count to={SOURCED} /><small>/{LESSONS.length}</small></span>
+            <span className="lp-m-l">lessons with public sources, {n0(SOURCE_COUNT)} links in all, from mishap boards and NASA&rsquo;s lessons database</span>
+            <a className="cite" href={href('/proof')}>Every source, listed</a>
+          </li>
+          {medErr.med !== null && (
+            <li data-reveal style={{ ['--d' as string]: '200ms' }}>
+              <span className="lp-m-n"><Count to={medErr.med} /><small>%</small></span>
+              <span className="lp-m-l">median mass error against {medErr.n} real craft in NASA NSSDCA, every miss published</span>
+              <a className="cite" href={href('/proof')}>The sizing check</a>
+            </li>
+          )}
+        </ul>
+        <div className="lp-truth" data-reveal>
+          <p><b>Real:</b> the failures and their sources, the crisis choices and the call NASA made, spacecraft facts from NSSDCA, mission budgets.</p>
+          <p><b>Simplified for play:</b> part values, how often a failure strikes, and the dry mass limit for each rocket.</p>
+          <a className="btn btn-ghost" href={href('/proof')}>See the tests and sources</a>
         </div>
       </Sec>
 
@@ -902,7 +864,7 @@ export default function Landing() {
       <Sec id="faq" no="08" kicker="Questions" title={<>Plain answers.</>}>
         <div className="lp-faq" data-reveal>
           {FAQ.map((f, i) => (
-            <details key={f.q} className="lp-qa" open={i === 0}>
+            <details key={f.q} className="lp-qa">
               <summary>
                 <span className="lp-qa-no">{two(i + 1)}</span>
                 <span className="lp-qa-q">{f.q}</span>
@@ -930,7 +892,7 @@ export default function Landing() {
         <div className="lp-foot-top">
           <div className="lp-foot-brand">
             <p className="lp-foot-mark">Flown</p>
-            <p>A free browser game where you design a space mission and survive NASA&rsquo;s real failures.</p>
+            <p>A free browser game where you design a space mission and survive real mission failures, most of them from NASAsurvive NASA&rsquo;s real failures.rsquo;s own records.</p>
           </div>
           <nav className="lp-foot-cols" aria-label="Footer">
             <div>
@@ -955,7 +917,9 @@ export default function Landing() {
             </div>
             <div>
               <p className="mono-label">About</p>
-              <a href="https://www.spaceappschallenge.org/" target="_blank" rel="noreferrer">Built for NASA Space Apps 2026</a>
+              <a href={href('/about')}>About Flown</a>
+              <a href={href('/privacy')}>Privacy</a>
+              <a href="https://www.spaceappschallenge.org/" target="_blank" rel="noreferrer">NASA Space Apps 2026</a>
               <a href={REPO_URL} target="_blank" rel="noreferrer">GitHub repo</a>
               <a href={REPO_URL + '/blob/master/LICENSE'} target="_blank" rel="noreferrer">MIT license</a>
             </div>
