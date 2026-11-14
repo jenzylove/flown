@@ -346,3 +346,32 @@ export function calibration() {
     return { brief: b.id, craft: real?.name ?? b.realCraft, realMassKg: realMass, flownMassKg: flown, errPct, source: real?.source };
   });
 }
+
+// ---------- share codes ----------
+/** Compact, URL safe code for a design plus seed, so a friend can fly the same mission. */
+export function encodeShare(design: Design, seed: number): string {
+  const d = [design.briefId, ...SLOTS.map(s => design.parts[s]), design.instruments.join('+'),
+    design.process.interfaceCheck, design.process.deployTest, design.process.faultSim, design.process.fuelMargin, String(seed)];
+  return d.join('.');
+}
+export function decodeShare(code: string): { design: Design; seed: number } | null {
+  const p = code.split('.');
+  if (p.length !== 1 + SLOTS.length + 1 + 4 + 1) return null;
+  const [briefId, ...rest] = p;
+  if (!BRIEFS.some(b => b.id === briefId)) return null;
+  const parts = Object.fromEntries(SLOTS.map((s, i) => [s, rest[i]])) as Design['parts'];
+  if (SLOTS.some(s => partById(parts[s])?.slot !== s)) return null;
+  const instruments = rest[SLOTS.length] ? rest[SLOTS.length].split('+') : [];
+  if (instruments.some(i => !instrumentById(i))) return null;
+  const [ic, dt, fs, fm, seedS] = rest.slice(SLOTS.length + 1);
+  const ok = (id: string, pr: string) => PROCESS_OPTIONS.some(o => o.id === id && o.process === pr);
+  if (!ok(ic, 'interfaceCheck') || !ok(dt, 'deployTest') || !ok(fs, 'faultSim') || !ok(fm, 'fuelMargin')) return null;
+  const seed = Number(seedS);
+  if (!Number.isInteger(seed) || seed < 0) return null;
+  return { design: { briefId, parts, instruments, process: { interfaceCheck: ic, deployTest: dt, faultSim: fs, fuelMargin: fm }, fixes: [] }, seed };
+}
+
+/** Crew score: science that came home, plus a bonus for each real failure caught before launch. */
+export function crewScore(r: FlightResult) {
+  return r.sciencePct + 15 * r.caught.length - 5 * r.missed.length;
+}

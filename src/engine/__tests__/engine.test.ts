@@ -85,3 +85,16 @@ describe('flight', () => {
 describe('calibration', () => {
   it('prints', () => { console.table(calibration()); });
 });
+
+import { encodeShare, decodeShare, crewScore } from '../index';
+describe('share', () => {
+  it('round trips', () => {
+    const d = defaultDesign('pluto'); const code = encodeShare(d, 4242);
+    const back = decodeShare(code)!; expect(back.seed).toBe(4242); expect(back.design.parts).toEqual(d.parts);
+    expect(back.design.instruments).toEqual(d.instruments); expect(back.design.process).toEqual(d.process);
+  });
+  it('rejects junk', () => { expect(decodeShare('x.y')).toBeNull(); expect(decodeShare(encodeShare(defaultDesign('pluto'), 1).replace('rtg', 'wheels_3'))).toBeNull(); });
+  it('crew score rewards catches', () => {
+    expect(crewScore({ sciencePct: 50, caught: ['a'], missed: [], triggered: [], prevented: [], falseFlags: [], outcome: 'degraded' })).toBe(65);
+  });
+});
