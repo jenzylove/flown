@@ -158,6 +158,12 @@ export function wouldTrigger(design: Design, seed: number): Rule[] {
   return RULES.filter(r => roll(seed, r.lessonId) < r.p(c));
 }
 
+/** Every real failure this design could suffer, with its chance per flight. */
+export function riskProfile(design: Design) {
+  const c = ctxFor({ ...design, fixes: [] });
+  return RULES.map(r => ({ lessonId: r.lessonId, item: r.item, p: r.p(c) })).filter(x => x.p > 0);
+}
+
 // ---------- flight ----------
 interface Internal {
   queue: { rule?: Rule; ev: FlightEvent }[];
@@ -188,8 +194,8 @@ export function startFlight(design: Design, seed: number, flagged: string[], fix
   const fixedSet = new Set(fixed);
   const flagSet = new Set(flagged);
   const st: Internal = { queue: [], mults: [], lostAtDay: null, triggered: [], caught: [], prevented: [], missed: [], falseFlags: [] };
-  const hitItems = new Set(hits.map(h => h.item));
-  st.falseFlags = flagged.filter(f => !hitItems.has(f));
+  const riskItems = new Set(riskProfile(design).map(r => r.item));
+  st.falseFlags = flagged.filter(f => !riskItems.has(f));
 
   const evs: { rule?: Rule; ev: FlightEvent }[] = [
     { ev: { day: 0, phase: 'launch', kind: 'nominal', text: `Launch. The craft separates from the rocket and heads for ${b.target}.` } },
