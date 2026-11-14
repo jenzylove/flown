@@ -1,0 +1,218 @@
+{
+ "juno": {
+  "nssdca_id": "2011-040A",
+  "name": "Juno",
+  "launch_date": "2011-08-05",
+  "launch_vehicle": "Atlas V",
+  "mass_kg": 1500.0,
+  "power_w": 400.0,
+  "source": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2011-040A"
+ },
+ "kepler": {
+  "nssdca_id": "2009-011A",
+  "name": "Kepler",
+  "launch_date": "2009-03-07",
+  "launch_vehicle": "Delta II",
+  "mass_kg": 1052.0,
+  "power_w": null,
+  "source": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2009-011A"
+ },
+ "dawn": {
+  "nssdca_id": "2007-043A",
+  "name": "Dawn",
+  "launch_date": "2007-09-27",
+  "launch_vehicle": "Delta II 7925",
+  "mass_kg": 725.0,
+  "power_w": null,
+  "source": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2007-043A"
+ },
+ "new-horizons": {
+  "nssdca_id": "2006-001A",
+  "name": "New Horizons Pluto Kuiper Belt Flyby",
+  "launch_date": "2006-01-19",
+  "launch_vehicle": "Atlas V",
+  "mass_kg": 385.0,
+  "power_w": 228.0,
+  "source": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2006-001A"
+ },
+ "mro": {
+  "nssdca_id": "2005-029A",
+  "name": "Mars Reconnaissance Orbiter",
+  "launch_date": "2005-08-12",
+  "launch_vehicle": "Atlas V 401",
+  "mass_kg": 1031.0,
+  "power_w": 1000.0,
+  "source": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2005-029A"
+ },
+ "messenger": {
+  "nssdca_id": "2004-030A",
+  "name": "MESSENGER",
+  "launch_date": "2004-08-03",
+  "launch_vehicle": "Delta II 7925",
+  "mass_kg": 485.2,
+  "power_w": 450.0,
+  "source": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2004-030A"
+ },
+ "lro": {
+  "nssdca_id": "2009-031A",
+  "name": "Lunar Reconnaissance Orbiter (LRO)",
+  "launch_date": "2009-06-18",
+  "launch_vehicle": "Atlas V 401",
+  "mass_kg": 500.0,
+  "power_w": null,
+  "source": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2009-031A"
+ },
+ "mgs": {
+  "nssdca_id": "1996-062A",
+  "name": "Mars Global Surveyor",
+  "launch_date": "1996-11-07",
+  "launch_vehicle": "Delta II 7925",
+  "mass_kg": 1030.5,
+  "power_w": 980.0,
+  "source": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=1996-062A"
+ },
+ "stardust": {
+  "nssdca_id": "1999-003A",
+  "name": "Stardust/NExT",
+  "launch_date": "1999-02-07",
+  "launch_vehicle": "Delta II 7426",
+  "mass_kg": 300.0,
+  "power_w": 330.0,
+  "source": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=1999-003A"
+ },
+ "deep-impact": {
+  "nssdca_id": "2005-001A",
+  "name": "Deep Impact/EPOXI",
+  "launch_date": "2005-01-12",
+  "launch_vehicle": "Delta II",
+  "mass_kg": 650.0,
+  "power_w": 620.0,
+  "source": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2005-001A"
+ },
+ "osiris-rex": {
+  "nssdca_id": "2016-055A",
+  "name": "OSIRIS-REx",
+  "launch_date": "2016-09-08",
+  "launch_vehicle": "Atlas V",
+  "mass_kg": 1528.0,
+  "power_w": null,
+  "source": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2016-055A"
+ },
+ "lunar-prospector": {
+  "nssdca_id": "1998-001A",
+  "name": "Lunar Prospector",
+  "launch_date": "1998-01-07",
+  "launch_vehicle": "Athena 2",
+  "mass_kg": 158.7,
+  "power_w": 202.0,
+  "source": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=1998-001A"
+ },
+ "grail-a": {
+  "nssdca_id": "2011-046A",
+  "name": "Gravity Recovery And Interior Laboratory-A (GRAIL)",
+  "launch_date": "2011-09-10",
+  "launch_vehicle": "Delta II",
+  "mass_kg": 132.6,
+  "power_w": null,
+  "source": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2011-046A"
+ },
+ "ladee": {
+  "nssdca_id": "2013-047A",
+  "name": "Lunar Atmosphere and Dust Environment Explorer (LADEE)",
+  "launch_date": "2013-09-07",
+  "launch_vehicle": "Minotaur 5",
+  "mass_kg": 248.2,
+  "power_w": 60.0,
+  "source": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2013-047A"
+ },
+ "insight": {
+  "nssdca_id": "2018-042A",
+  "name": "InSight",
+  "launch_date": "2018-05-05",
+  "launch_vehicle": "Atlas V 401",
+  "mass_kg": 360.0,
+  "power_w": null,
+  "source": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2018-042A"
+ },
+ "mco": {
+  "nssdca_id": "1998-073A",
+  "name": "Mars Climate Orbiter",
+  "launch_date": "1998-12-11",
+  "launch_vehicle": "Delta II 7425",
+  "mass_kg": 338.0,
+  "power_w": 500.0,
+  "source": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=1998-073A"
+ },
+ "lucy": {
+  "nssdca_id": "2021-093A",
+  "name": "Lucy",
+  "launch_date": "2021-10-16",
+  "launch_vehicle": "Atlas V 401",
+  "mass_kg": 821.0,
+  "power_w": 504.0,
+  "source": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2021-093A"
+ },
+ "psyche": {
+  "nssdca_id": "2023-157A",
+  "name": "Psyche",
+  "launch_date": "2023-10-13",
+  "launch_vehicle": "Falcon 9 Heavy",
+  "mass_kg": 1400.0,
+  "power_w": 2400.0,
+  "source": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2023-157A"
+ },
+ "spitzer": {
+  "nssdca_id": "2003-038A",
+  "name": "Spitzer Space Telescope",
+  "launch_date": "2003-08-25",
+  "launch_vehicle": "Delta 7920H ELV",
+  "mass_kg": 865.0,
+  "power_w": null,
+  "source": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2003-038A"
+ },
+ "near": {
+  "nssdca_id": "1996-008A",
+  "name": "NEAR Shoemaker",
+  "launch_date": "1996-02-17",
+  "launch_vehicle": "Delta II 7925",
+  "mass_kg": 487.0,
+  "power_w": 1800.0,
+  "source": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=1996-008A"
+ },
+ "voyager-1": {
+  "nssdca_id": "1977-084A",
+  "name": "Voyager 1",
+  "launch_date": "1977-09-05",
+  "launch_vehicle": "Titan IIIE-Centaur",
+  "mass_kg": 721.9,
+  "power_w": 420.0,
+  "source": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=1977-084A"
+ },
+ "wise": {
+  "nssdca_id": "2009-071A",
+  "name": "WISE/NEOWISE",
+  "launch_date": "2009-12-14",
+  "launch_vehicle": "Delta II",
+  "mass_kg": 661.0,
+  "power_w": null,
+  "source": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2009-071A"
+ },
+ "swift": {
+  "nssdca_id": "2004-047A",
+  "name": "Swift",
+  "launch_date": "2004-11-20",
+  "launch_vehicle": "Delta II",
+  "mass_kg": 1470.0,
+  "power_w": 1040.0,
+  "source": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2004-047A"
+ },
+ "mars-pathfinder": {
+  "nssdca_id": "1996-068A",
+  "name": "Mars Pathfinder",
+  "launch_date": "1996-12-04",
+  "launch_vehicle": "Delta II 7925",
+  "mass_kg": 463.0,
+  "power_w": 35.0,
+  "source": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=1996-068A"
+ }
+}
