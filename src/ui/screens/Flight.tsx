@@ -31,6 +31,8 @@ export default function Flight() {
   const [shown, setShown] = useState(() => (mission?.run?.done && mission.recorded ? mission.run.events.length : 0));
   const [nasaNotes, setNasaNotes] = useState<Record<number, { yours: string; nasa: string; same: boolean }>>({});
   const logRef = useRef<HTMLOListElement>(null);
+  const crisisRef = useRef<HTMLElement>(null);
+  const resultRef = useRef<HTMLElement>(null);
 
   // reveal events one at a time
   useEffect(() => {
@@ -53,6 +55,21 @@ export default function Flight() {
   }, [finished, record]);
 
   const items = useMemo(() => (mission ? reviewItems(mission.design) : []), [mission]);
+
+  // On narrow screens bring a new crisis, then the result, into view. Scrolling lives in effects so
+  // nothing touches the DOM while React is committing it.
+  const crisisKey = allShown && run?.pendingCrisis ? `${run.pendingCrisis.lessonId}:${run.pendingCrisis.day}` : null;
+  useEffect(() => {
+    if (!crisisKey || window.innerWidth >= 1000) return;
+    const id = window.requestAnimationFrame(() => crisisRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+    return () => window.cancelAnimationFrame(id);
+  }, [crisisKey]);
+  const showResult = finished && !!run?.result;
+  useEffect(() => {
+    if (!showResult || window.innerWidth >= 1000) return;
+    const id = window.requestAnimationFrame(() => resultRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+    return () => window.cancelAnimationFrame(id);
+  }, [showResult]);
 
   if (!mission) return <NoMission />;
   const brief = briefById(mission.briefId);
@@ -180,7 +197,7 @@ export default function Flight() {
           )}
 
           {crisis && (
-            <section className="crisis" role="dialog" aria-label="Crisis" ref={(el) => { if (el && window.innerWidth < 1000) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); }}>
+            <section className="crisis" role="dialog" aria-label="Crisis" ref={crisisRef}>
               <p className="mono-label alarm">Crisis &middot; day {n0(crisis.day)} &middot; {lessonById(crisis.lessonId)?.mission}</p>
               <p className="crisis-prompt">{crisis.prompt}</p>
               <div className="choice-list">
@@ -198,11 +215,19 @@ export default function Flight() {
           )}
 
           {finished && r && (
-            <section className="result" ref={(el) => { if (el && window.innerWidth < 1000) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); }}>
+            <section className="result" ref={resultRef}>
               <div className="result-score">
                 <span className="result-num">{pct(r.sciencePct)}</span>
                 <span className="result-cap">of planned science came home</span>
               </div>
+              {r.notes.length > 0 && (
+                <div className="result-why">
+                  <p className="mono-label">Why this result</p>
+                  <ul className="warnings">
+                    {r.notes.map((n) => <li key={n}>{n}</li>)}
+                  </ul>
+                </div>
+              )}
               <dl className="result-lists">
                 <ResultGroup title="Prevented by your fixes" ids={r.prevented ?? []} tone="good" />
                 <ResultGroup title="Pinned, not fixed" ids={r.caught.filter((id) => !(r.prevented ?? []).includes(id))} tone="mid" />
@@ -210,7 +235,7 @@ export default function Flight() {
                 <ResultGroup title="Real risks on your craft that stayed quiet this flight" ids={riskProfile(run.design).map((x) => x.lessonId).filter((id) => !r.triggered.includes(id) && !(r.prevented ?? []).includes(id) && !r.caught.includes(id) && !r.missed.includes(id))} tone="mid" />
                 {r.falseFlags.length > 0 && (
                   <div className="rl">
-                    <dt>Pins on parts with no known failure in the library</dt>
+                    <dt>Wrong pins, each one counts against your catch rate</dt>
                     <dd>
                       <ul>{r.falseFlags.map((f) => <li key={f}>{labelFor(f)}</li>)}</ul>
                     </dd>
@@ -231,7 +256,7 @@ export default function Flight() {
                 </div>
               ) : (
                 <div className="cta-row">
-                  {r.triggered.length + r.missed.length > 0 && (
+                  {(r.sciencePct < 100 || r.triggered.length + r.missed.length > 0) && (
                     <button className="btn btn-primary" onClick={() => { refly(); go('/refly'); }}>Fix it and refly</button>
                   )}
                   <ShareBox mission={mission} />

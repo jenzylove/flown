@@ -64,6 +64,7 @@ export function ComparePanel({ mission, design, result }: { mission: Mission; de
     ['Science', fr ? pct(fr.sciencePct) : 'Not in the link', pct(result.sciencePct)],
     ['Caught', fr ? n0(fr.caught.length) : 'Not in the link', n0(result.caught.length)],
     ['Missed', fr ? n0(fr.missed.length) : 'Not in the link', n0(result.missed.length)],
+    ['Wrong pins', fr ? n0(fr.falseFlags?.length ?? 0) : 'Not in the link', n0(result.falseFlags?.length ?? 0)],
     ['Score', fScore === null ? 'Not in the link' : n0(fScore), n0(yScore)],
   ];
   const verdict =
@@ -95,7 +96,7 @@ export function ComparePanel({ mission, design, result }: { mission: Mission; de
         </table>
       </div>
       <p className="vs-note">
-        Score is science percent, plus 15 for each real failure caught at review, minus 5 for each one missed.
+        Score is science percent, plus 15 for each real failure caught at review, minus 5 for each one missed, minus 5 for each pin on something with no real risk for that craft.
         {!fr && ' The link carried only the design, so the friend column lists the failures that come for that craft on this seed before any pins.'}
       </p>
     </section>

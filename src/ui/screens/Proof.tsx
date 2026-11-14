@@ -1,4 +1,4 @@
-import { LESSONS, PLAYABLE_LESSONS, calibration } from '../eng';
+import { LESSONS, PLAYABLE_LESSONS, MAX_PINS, calibration } from '../eng';
 import { href } from '../router';
 import { kg, n0 } from '../format';
 import { llisUrl } from './CaseFile';
@@ -35,25 +35,28 @@ export default function Proof() {
         <div className="formula">
           <span className="f-top">caught</span>
           <span className="f-bar" />
-          <span className="f-bot">caught + missed</span>
+          <span className="f-bot">caught + missed + wrong pins</span>
         </div>
         <p className="proof-p">
           On every flight the engine decides, from the seed and your design, which real failures would strike. A failure you pinned at the pre launch
-          review counts as caught. One you did not pin counts as missed. Pins on things that would not have failed are shown to you but do not
-          count either way. The rate on your lesson sky adds up every flight you have flown on this device.
+          review counts as caught. One you did not pin counts as missed. You get {MAX_PINS} pins per review, and a pin on something that carries no
+          real risk for your craft is a wrong pin: it counts against you, so pinning everything never pays. The rate on your lesson sky adds up every
+          flight you have flown on this device. Crew and friend scores use the same idea: science percent, plus 15 for each failure caught, minus 5
+          for each one missed, minus 5 for each wrong pin.
         </p>
       </section>
 
       <section className="proof-sec">
         <header className="sec-head"><span className="sec-no">02</span><h2>Sizing check against real spacecraft</h2></header>
         <p className="proof-p">
-          For each brief, a Flown design built like the real craft is weighed by the same rules you play with, then compared with the launch mass in
-          NSSDCA. {med !== null && <>Median error: <b>{n0(med)}%</b> across {errs.length} craft.</>} Every row is shown, misses included.
+          For each brief, a Flown design built like the real craft is weighed by the same rules you play with, then compared with the listed mass in
+          NSSDCA. That listed figure is not always the same kind of mass: for some craft it is the dry mass, for others the launch or landed mass.
+          The limit you build against in Flown is a simplified dry mass limit for the rocket you pick, not a real rocket&rsquo;s capacity. {med !== null && <>Median error: <b>{n0(med)}%</b> across {errs.length} craft.</>} Every row is shown, misses included.
         </p>
         <div className="table-scroll">
           <table className="proof-table">
             <thead>
-              <tr><th>Real craft</th><th>NSSDCA mass</th><th>Flown mass</th><th>Error</th><th>Source</th></tr>
+              <tr><th>Real craft</th><th>NSSDCA listed mass</th><th>Flown mass</th><th>Error</th><th>Source</th></tr>
             </thead>
             <tbody>
               {cal.map((c) => (
@@ -86,7 +89,14 @@ export default function Proof() {
           <li>Lessons: <a href="https://llis.nasa.gov/" target="_blank" rel="noreferrer">NASA Lessons Learned Information System (LLIS)</a> and the mishap reports and articles linked on each lesson.</li>
           <li>The 57% figure: <a href={IG_URL} target="_blank" rel="noreferrer">NASA Office of Inspector General, report IG 12 012 (2012)</a>.</li>
           <li>Spacecraft visuals are drawn in code from simple shapes. No generated images, no NASA logos or insignia.</li>
-          <li>Type: Instrument Serif, Martian Mono and Schibsted Grotesk, via Google Fonts.</li>
+          <li>Type: Instrument Serif, Martian Mono and Schibsted Grotesk, via Google Fonts, under the SIL Open Font License 1.1.</li>
+          <li>
+            Code: <a href="https://react.dev/" target="_blank" rel="noreferrer">React</a> (MIT),{' '}
+            <a href="https://threejs.org/" target="_blank" rel="noreferrer">three.js</a> (MIT),{' '}
+            <a href="https://github.com/pmndrs/react-three-fiber" target="_blank" rel="noreferrer">@react-three/fiber</a> (MIT),{' '}
+            <a href="https://github.com/pmndrs/drei" target="_blank" rel="noreferrer">drei</a> (MIT) and{' '}
+            <a href="https://github.com/pmndrs/zustand" target="_blank" rel="noreferrer">zustand</a> (MIT).
+          </li>
           <li>Not a NASA product. Built for NASA Space Apps 2026.</li>
         </ul>
       </section>

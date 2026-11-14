@@ -98,6 +98,7 @@ export default function Sky() {
   const rate = catchRate(runs);
   const caughtN = runs.reduce((a, r) => a + r.caught.length, 0);
   const missedN = runs.reduce((a, r) => a + r.missed.length, 0);
+  const wrongN = runs.reduce((a, r) => a + (r.falseFlags?.length ?? 0), 0);
   const statusOf = (id: string) => lessons[id]?.status ?? 'unseen';
   const count = (st: string) => LESSONS.filter((l) => statusOf(l.id) === st).length;
   const today = dailyBrief(new Date());
@@ -164,7 +165,14 @@ export default function Sky() {
                 )}
                 <circle cx={s.x} cy={s.y} r={st === 'caught' ? 4 : st === 'hit' ? 3.4 : playable ? 2.4 : 1.6} className="star-core" />
                 {(st !== 'unseen' || hover === s.id) && (
-                  <text x={s.x + 9} y={s.y - 9} className="star-label">{shortName(s.mission)}</text>
+                  <text
+                    x={s.x > W / 2 ? s.x - 9 : s.x + 9}
+                    y={s.y - 9}
+                    textAnchor={s.x > W / 2 ? 'end' : 'start'}
+                    className="star-label"
+                  >
+                    {shortName(s.mission)}
+                  </text>
                 )}
               </a>
             );
@@ -181,8 +189,8 @@ export default function Sky() {
           <span className="stat-num">{rate === null ? 'None yet' : pct(rate * 100)}</span>
           <span className="stat-sub">
             {rate === null
-              ? 'Fly a mission. Your rate is caught divided by caught plus missed, over every flight.'
-              : `${caughtN} caught out of ${caughtN + missedN} real ${caughtN + missedN === 1 ? 'failure' : 'failures'} that came for your craft, over ${runs.length} ${runs.length === 1 ? 'flight' : 'flights'}.`}
+              ? 'Fly a mission. Your rate is caught divided by caught plus missed plus wrong pins, over every flight.'
+              : `${caughtN} caught out of ${caughtN + missedN} real ${caughtN + missedN === 1 ? 'failure' : 'failures'} that came for your craft, with ${wrongN} wrong ${wrongN === 1 ? 'pin' : 'pins'} counted against you, over ${runs.length} ${runs.length === 1 ? 'flight' : 'flights'}.`}
           </span>
         </div>
         <div className="stat">
@@ -217,7 +225,7 @@ export default function Sky() {
         ) : (
           <>
             <p className="best-note">
-              Top five per brief, kept in this browser and nowhere else. Score is science percent, plus 15 for each real failure caught at review, minus 5 for each one missed.
+              Top five per brief, kept in this browser and nowhere else. Score is science percent, plus 15 for each real failure caught at review, minus 5 for each one missed, minus 5 for each pin on something with no real risk for that craft.
             </p>
             <div className="best-grid">
               {boards.map(({ brief, top }) => (

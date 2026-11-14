@@ -13,7 +13,7 @@ interface G {
 
 function gauges(r: BudgetReport): G[] {
   const out: G[] = [
-    { key: 'mass', label: 'Mass', value: kg(r.massKg), limit: `limit ${kg(r.massLimitKg)}`, ratio: r.massKg / Math.max(1, r.massLimitKg), bad: r.massKg > r.massLimitKg },
+    { key: 'mass', label: 'Mass', value: kg(r.massKg), limit: `dry limit ${kg(r.massLimitKg)}`, ratio: r.massKg / Math.max(1, r.massLimitKg), bad: r.massKg > r.massLimitKg },
     { key: 'cost', label: 'Cost', value: usd(r.costM), limit: `budget ${usd(r.budgetM)}`, ratio: r.costM / Math.max(1, r.budgetM), bad: r.costM > r.budgetM },
     { key: 'power', label: 'Power', value: `${watts(r.powerUseW)} used`, limit: `${watts(r.powerGenW)} made`, ratio: r.powerUseW / Math.max(1, r.powerGenW), bad: r.powerUseW > r.powerGenW },
     r.eclipseHours > 0

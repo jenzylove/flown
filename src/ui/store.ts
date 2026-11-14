@@ -4,9 +4,11 @@ import {
   startFlight,
   resolveCrisis,
   decodeShare,
+  MAX_PINS,
 } from './eng';
 import type {
   Design,
+  Difficulty,
   FlightRun,
   FlightResult,
   LessonState,
@@ -73,6 +75,8 @@ export interface Crew {
   players: CrewPlayer[];
   turn: number;
   startedAt: string;
+  /** Difficulty every crew craft flies on. */
+  difficulty?: Difficulty;
 }
 
 export interface RunRecord {
@@ -104,7 +108,10 @@ interface State {
   runs: RunRecord[];
   streak: Streak;
   crew: Crew | null;
-  startCrew: (names: string[], briefId: string) => void;
+  /** Difficulty picked on the brief screen, used for every new mission. */
+  difficulty: Difficulty;
+  setDifficulty: (d: Difficulty) => void;
+  startCrew: (names: string[], briefId: string, difficulty?: Difficulty) => void;
   beginCrewTurn: () => void;
   endCrew: () => void;
   startChallenge: (code: string, meta: string, mode: Challenge['mode']) => boolean;
@@ -112,6 +119,8 @@ interface State {
   setPart: (slot: SlotId, id: string) => void;
   toggleInstrument: (id: string, max: number) => void;
   setProcess: (p: ProcessId, id: string) => void;
+  setLaunch: (id: string) => void;
+  setOrbit: (id: string) => void;
   toggleFlag: (id: string) => void;
   setFix: (id: string, on: boolean) => void;
   launch: () => FlightRun | null;
@@ -133,14 +142,24 @@ export const ANIM_SLOT: Partial<Record<FailureAnim, SlotId>> = {
   crash: 'computer',
 };
 
-const K = { mission: 'flown.mission', lessons: 'flown.lessons', runs: 'flown.runs', streak: 'flown.streak', crew: 'flown.crew' };
+const K = { mission: 'flown.mission', lessons: 'flown.lessons', runs: 'flown.runs', streak: 'flown.streak', crew: 'flown.crew', difficulty: 'flown.difficulty' };
 
-function freshMission(briefId: string, seed: number, daily: boolean, extra: Partial<Mission> = {}): Mission {
+const DIFFS: Difficulty[] = ['cadet', 'engineer', 'veteran'];
+function loadDifficulty(): Difficulty {
+  const d = load<string>(K.difficulty, 'engineer');
+  return (DIFFS as string[]).includes(d) ? (d as Difficulty) : 'engineer';
+}
+
+function designFor(briefId: string, difficulty: Difficulty): Design {
+  return { ...defaultDesign(briefId), difficulty };
+}
+
+function freshMission(briefId: string, seed: number, daily: boolean, extra: Partial<Mission> = {}, difficulty: Difficulty = 'engineer'): Mission {
   return {
     briefId,
     seed,
     daily,
-    design: defaultDesign(briefId),
+    design: designFor(briefId, difficulty),
     flagged: [],
     fixed: [],
     run: null,
@@ -158,14 +177,21 @@ export const useGame = create<State>((set, get) => ({
   runs: load<RunRecord[]>(K.runs, []),
   streak: load<Streak>(K.streak, { count: 0, last: null }),
   crew: load<Crew | null>(K.crew, null),
+  difficulty: loadDifficulty(),
 
-  startCrew(names, briefId) {
+  setDifficulty(difficulty) {
+    set({ difficulty });
+    save(K.difficulty, difficulty);
+  },
+
+  startCrew(names, briefId, difficulty) {
     const crew: Crew = {
       briefId,
       seed: Math.floor(Math.random() * 100000),
       players: names.map((name) => ({ name, done: false })),
       turn: 0,
       startedAt: new Date().toISOString(),
+      difficulty: difficulty ?? get().difficulty,
     };
     set({ crew });
     save(K.crew, crew);
@@ -174,7 +200,7 @@ export const useGame = create<State>((set, get) => ({
   beginCrewTurn() {
     const crew = get().crew;
     if (!crew || crew.turn >= crew.players.length) return;
-    const mission = freshMission(crew.briefId, crew.seed, false, { crewIndex: crew.turn });
+    const mission = freshMission(crew.briefId, crew.seed, false, { crewIndex: crew.turn }, crew.difficulty ?? 'engineer');
     set({ mission });
     save(K.mission, persistable(mission));
   },
@@ -191,7 +217,7 @@ export const useGame = create<State>((set, get) => ({
     const dec = decodeShare(code);
     if (!dec) return false;
     const mission = freshMission(dec.design.briefId, dec.seed, false, {
-      design: mode === 'same' ? { ...dec.design, fixes: [] } : defaultDesign(dec.design.briefId),
+      design: mode === 'same' ? { ...dec.design, fixes: [] } : designFor(dec.design.briefId, dec.design.difficulty ?? 'engineer'),
       challenge: { code, meta, mode },
     });
     set({ mission });
@@ -200,7 +226,7 @@ export const useGame = create<State>((set, get) => ({
   },
 
   startMission(briefId, seed, daily) {
-    const mission = freshMission(briefId, seed, daily);
+    const mission = freshMission(briefId, seed, daily, {}, get().difficulty);
     set({ mission });
     save(K.mission, persistable(mission));
   },
@@ -222,9 +248,18 @@ export const useGame = create<State>((set, get) => ({
     patchMission({ design: { ...d, process: { ...d.process, [p]: id } } });
   },
 
+  setLaunch(id) {
+    patchMission({ design: { ...need().design, launch: id } });
+  },
+
+  setOrbit(id) {
+    patchMission({ design: { ...need().design, orbit: id } });
+  },
+
   toggleFlag(id) {
     const m = need();
     const on = m.flagged.includes(id);
+    if (!on && m.flagged.length >= MAX_PINS) return;
     patchMission({
       flagged: on ? m.flagged.filter((x) => x !== id) : [...m.flagged, id],
       fixed: on ? m.fixed.filter((x) => x !== id) : m.fixed,
@@ -350,16 +385,18 @@ function persistable(m: Mission): Mission {
   return m.run && !m.run.done ? { ...m, run: null } : m;
 }
 
-/** caught / (caught + missed) over all recorded runs. */
+/** caught / (caught + missed + wrong pins) over all recorded runs, the same rule as the engine's catchRate. */
 export function catchStats(runs: RunRecord[]) {
   let caught = 0;
   let missed = 0;
+  let wrong = 0;
   for (const r of runs) {
     caught += r.caught.length;
     missed += r.missed.length;
+    wrong += r.falseFlags?.length ?? 0;
   }
-  const total = caught + missed;
-  return { caught, missed, total, rate: total ? (caught / total) * 100 : null };
+  const total = caught + missed + wrong;
+  return { caught, missed, wrong, total, rate: caught + missed ? (caught / total) * 100 : null };
 }
 
 /* ---------- theme ---------- */

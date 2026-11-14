@@ -321,7 +321,7 @@ function finish(design: Design, st: Internal): FlightResult {
   const sciencePct = Math.min(100, Math.round(100 * dataRatio * mult * frac * orb.scienceMult));
   const notes: string[] = [];
   if (dataRatio < 0.995) notes.push(`Your antenna could send home ${rep.downlinkMbDay * sendDays} Mb for every ${rep.dataMbDay} Mb your instruments made, so ${Math.round(100 * (1 - dataRatio))}% of the data never reached Earth.`);
-  if (orb.scienceMult !== 1) notes.push(`${orb.name}: ${orb.scienceMult > 1 ? 'more' : 'less'} science than the standard choice (${orb.scienceMult > 1 ? 'plus' : 'minus'} ${Math.abs(Math.round(100 * (orb.scienceMult - 1)))}%).`);
+  if (orb.scienceMult !== 1) notes.push(`Your ${orb.kind === 'lander' ? 'landing site' : orb.kind === 'flyby' ? 'pass' : 'orbit'}, ${orb.name.toLowerCase()}, ${orb.scienceMult > 1 ? 'added' : 'cost'} ${Math.abs(Math.round(100 * (orb.scienceMult - 1)))}% science.`);
   if (st.mults.some(m => m < 1)) notes.push(`Real failures and your crisis calls cut the science to ${Math.round(100 * mult)}% of what was possible.`);
   if (st.lostAtDay !== null) notes.push(st.lostAtDay <= b.arrivalDay ? 'The craft was lost before its science began.' : `The craft was lost on day ${st.lostAtDay}, ${Math.round(100 * frac)}% of the way through the science phase.`);
   const outcome: FlightResult['outcome'] = st.lostAtDay !== null && frac < 0.5 ? 'lost' : sciencePct >= 90 ? 'success' : 'degraded';

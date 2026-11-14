@@ -132,7 +132,7 @@ export default function ColdOpen() {
           <li>
             <span className="how-no">01</span>
             <h3>Build to a real brief</h3>
-            <p>Pick one of {BRIEFS.length} missions modeled on real ones. Snap on power, antenna, engine and instruments inside the real budget and the rocket&rsquo;s mass limit.</p>
+            <p>Pick one of {BRIEFS.length} missions modeled on real ones. Snap on power, antenna, engine and instruments inside a budget close to the real one and a simplified dry mass limit for the rocket you pick.</p>
           </li>
           <li>
             <span className="how-no">02</span>

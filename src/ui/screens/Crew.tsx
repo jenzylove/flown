@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
-import { BRIEFS, REAL_CRAFT, briefById, evaluate, crewScore, lessonById } from '../eng';
-import type { FlightResult } from '../eng';
+import { BRIEFS, REAL_CRAFT, DIFFICULTY, briefById, evaluate, crewScore, lessonById, launchOf } from '../eng';
+import type { Difficulty, FlightResult } from '../eng';
+import { DifficultyPicker } from './Brief';
 import { useGame } from '../store';
 import type { Crew as CrewT } from '../store';
 import { go, href } from '../router';
@@ -19,6 +20,8 @@ export default function Crew({ view }: { view: string }) {
 function Setup() {
   const startCrew = useGame((s) => s.startCrew);
   const crew = useGame((s) => s.crew);
+  const savedDifficulty = useGame((s) => s.difficulty);
+  const [difficulty, setDifficulty] = useState<Difficulty>(savedDifficulty);
   const [names, setNames] = useState<string[]>(['', '']);
   const [briefId, setBriefId] = useState<string | null>(null);
   const clean = names.map((n) => n.trim());
@@ -28,7 +31,7 @@ function Setup() {
 
   const start = () => {
     if (!ready || !briefId) return;
-    startCrew(clean, briefId);
+    startCrew(clean, briefId, difficulty);
     go('/crew/pass');
   };
 
@@ -89,14 +92,19 @@ function Setup() {
                 <span className="opt-name">{b.title}</span>
                 <span className="opt-blurb">{b.goal}</span>
                 <span className="opt-specs">
-                  <span>{usd(b.budgetM)} budget</span>
-                  <span>{kg(b.launchMassLimitKg)} limit</span>
+                  <span>{usd(Math.round(b.budgetM * DIFFICULTY[difficulty].budgetMult))} budget</span>
+                  <span>{kg(b.launchMassLimitKg)} dry mass limit</span>
                   {real && <span>Modeled on {real.name}</span>}
                 </span>
               </button>
             );
           })}
         </div>
+      </section>
+
+      <section className="crew-sec">
+        <p className="mono-label">03 &middot; One difficulty for everyone</p>
+        <DifficultyPicker value={difficulty} onChange={setDifficulty} />
       </section>
 
       <div className="cta-row">
@@ -210,12 +218,12 @@ function Board() {
   return (
     <div className="page board-page">
       <header className="page-head">
-        <p className="eyebrow">Crew board &middot; {brief.title} &middot; seed {crew.seed} &middot; {prettyDate(crew.startedAt)}</p>
+        <p className="eyebrow">Crew board &middot; {brief.title} &middot; {DIFFICULTY[crew.difficulty ?? 'engineer'].label} &middot; seed {crew.seed} &middot; {prettyDate(crew.startedAt)}</p>
         <h1 className="page-title">
           {winners.length > 1 ? `${winners.map((w) => w.name).join(' and ')} share the top.` : `${winners[0].name} flew it best.`}
         </h1>
         <p className="page-lede">
-          Score is science percent, plus 15 for each real failure caught at review, minus 5 for each one missed. One seed for everyone, so each real failure rolled the same dice for every craft. Only the craft and the calls differed.
+          Score is science percent, plus 15 for each real failure caught at review, minus 5 for each one missed, minus 5 for each pin on something with no real risk for that craft. One seed for everyone, so each real failure rolled the same dice for every craft. Only the craft and the calls differed.
         </p>
       </header>
 
@@ -227,6 +235,7 @@ function Board() {
             <span className="bd-stat"><em>Science</em>{pct(d.result.sciencePct)}</span>
             <span className="bd-stat"><em>Caught</em>{n0(d.result.caught.length)}</span>
             <span className={'bd-stat' + (d.result.missed.length ? ' bad' : '')}><em>Missed</em>{n0(d.result.missed.length)}</span>
+            <span className={'bd-stat' + (d.result.falseFlags?.length ? ' bad' : '')}><em>Wrong pins</em>{n0(d.result.falseFlags?.length ?? 0)}</span>
             <span className="bd-score">{n0(d.score)}</span>
           </li>
         ))}
@@ -262,7 +271,7 @@ function Board() {
               <tr>
                 <th scope="row">Rocket</th>
                 <td>{real?.launch_vehicle ?? 'Not in the archive'}</td>
-                <td colSpan={done.length} className="dim">Your rocket could lift {kg(brief.launchMassLimitKg)}</td>
+                {reports.map((r, i) => <td key={i}>{launchOf(done[i].design).name}<span className="cell-note">allows {kg(r.massLimitKg)} dry, a simplified game limit</span></td>)}
               </tr>
             </tbody>
           </table>
@@ -305,7 +314,7 @@ function Board() {
       </section>
 
       <div className="cta-row">
-        <button className="btn btn-primary" onClick={() => { startCrew(crew.players.map((p) => p.name), crew.briefId); go('/crew/pass'); }}>
+        <button className="btn btn-primary" onClick={() => { startCrew(crew.players.map((p) => p.name), crew.briefId, crew.difficulty); go('/crew/pass'); }}>
           Rematch on a new seed
         </button>
         <a className="btn btn-ghost" href={href('/sky')}>Lesson sky</a>

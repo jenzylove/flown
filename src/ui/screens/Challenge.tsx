@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { briefById, partById, instrumentById, PROCESS_OPTIONS, lessonById, crewScore, SLOTS } from '../eng';
+import { briefById, partById, instrumentById, PROCESS_OPTIONS, lessonById, crewScore, SLOTS, launchOf, orbitOf, difficultyOf } from '../eng';
 import { useGame } from '../store';
 import { readFriend, splitShare } from '../share';
 import { Craft3D } from '../Shell';
@@ -65,12 +65,15 @@ export default function Challenge({ rest }: { rest: string }) {
             <div className="result-score">
               <span className="result-num">{pct(r.sciencePct)}</span>
               <span className="result-cap">
-                of planned science came home for them. {n0(r.caught.length)} caught, {n0(r.missed.length)} missed, score {n0(crewScore(r))}.
+                of planned science came home for them. {n0(r.caught.length)} caught, {n0(r.missed.length)} missed, {n0(r.falseFlags?.length ?? 0)} wrong {(r.falseFlags?.length ?? 0) === 1 ? 'pin' : 'pins'}, score {n0(crewScore(r))}.
               </span>
             </div>
           )}
           <p className="mono-label">Their craft</p>
           <ul className="spec-list">
+            <li><span>Rocket</span>{launchOf(d).name}</li>
+            <li><span>{brief.kind === 'lander' ? 'Landing site' : brief.kind === 'flyby' ? 'Pass' : 'Orbit'}</span>{orbitOf(d).name}</li>
+            <li><span>Difficulty</span>{difficultyOf(d).label}</li>
             {SLOTS.map((s) => (
               <li key={s}><span>{SLOT_NAME[s]}</span>{partById(d.parts[s])?.name}</li>
             ))}
