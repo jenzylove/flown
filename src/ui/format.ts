@@ -41,3 +41,6 @@ export function prettyDate(iso: string | null | undefined): string {
   if (!m) return iso;
   return `${Number(m[3])} ${MONTHS[Number(m[2]) - 1]} ${m[1]}`;
 }
+
+/** Thousands separators for every whole number over 999 inside an engine sentence ("17540 Mb" to "17,540 Mb"). */
+export const sep = (s: string) => s.replace(/(^|[^\d.,])(\d{4,})(?![\d.,]*\d)/g, (_m, a: string, d: string) => a + Number(d).toLocaleString('en-US'));

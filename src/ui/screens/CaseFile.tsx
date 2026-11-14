@@ -1,8 +1,9 @@
-import { lessonById, REAL_CRAFT, PLAYABLE_LESSONS, evaluate, briefById, applyFixes } from '../eng';
+import { lessonById, REAL_CRAFT, PLAYABLE_LESSONS, evaluate, briefById, applyFixes, launchOf } from '../eng';
 import type { RealCraft } from '../eng';
 import { useGame } from '../store';
 import { href } from '../router';
 import { kg, watts, prettyDate } from '../format';
+import { More, splitFirst } from '../parts/Bits';
 
 export function llisUrl(id: string) {
   const n = parseInt(id, 10);
@@ -41,16 +42,40 @@ export default function CaseFile({ id }: { id: string }) {
   }
   const yours = mission ? evaluate(applyFixes(mission.design, mission.fixed)) : null;
   const briefCraft = brief ? REAL_CRAFT[brief.realCraft] : null;
-  const compare: RealCraft | null = briefCraft ?? lessonCraft?.[1] ?? null;
+  // Compare with the craft this case happened to when the archive has it; otherwise the real craft behind your brief.
+  const compare: RealCraft | null = lessonCraft?.[1] ?? briefCraft ?? null;
+  const compareIsCase = !!lessonCraft;
+
+  const [whyHead, whyRest] = splitFirst(lesson.root_cause);
+  const [didHead, didRest] = splitFirst(lesson.what_nasa_did);
+  const llisNo = lesson.llis_id ? parseInt(lesson.llis_id, 10) : NaN;
+  const seen = new Set<string>();
+  const sources = lesson.sources.filter((src) => {
+    const m = /llis\.nasa\.gov\/lesson\/0*(\d+)/i.exec(src.url);
+    if (m && Number(m[1]) === llisNo) return false;
+    const k = src.url.replace(/\/+$/, '').toLowerCase();
+    if (seen.has(k)) return false;
+    seen.add(k);
+    return true;
+  });
+  const nSources = sources.length + (lesson.llis_id ? 1 : 0);
+  const yourRocket = mission ? launchOf(mission.design) : null;
 
   return (
     <article className="page casefile">
       <header className="case-head">
-        <p className="eyebrow">
-          Case file &middot; {lesson.agency} &middot; {lesson.year}
-          {lesson.llis_id && <> &middot; LLIS {lesson.llis_id}</>}
-        </p>
-        <h1 className="case-title">{lesson.mission}</h1>
+        <div className="case-head-top">
+          <p className="eyebrow">
+            Case file &middot; {lesson.agency}
+            {lesson.llis_id && <> &middot; LLIS {lesson.llis_id}</>}
+          </p>
+          <div className="case-nav">
+            {mission?.run?.done && <a className="btn btn-primary btn-small" href={href('/flight')}>Back to the flight</a>}
+            <a className="btn btn-ghost btn-small" href={href('/sky')}>Lesson sky</a>
+          </div>
+        </div>
+        <h1 className="case-title">{lesson.mission} <span className="case-year">{lesson.year}</span></h1>
+        <p className="case-what">{lesson.what_happened}</p>
         <div className="case-tags">
           <span>{lesson.subsystem.replace(/_/g, ' ')}</span>
           <span>{lesson.phase.replace(/_/g, ' ')}</span>
@@ -62,43 +87,32 @@ export default function CaseFile({ id }: { id: string }) {
         </div>
       </header>
 
-      <div className="case-body">
-        <div className="case-text">
-          <section>
-            <h2 className="case-h">What happened</h2>
-            <p>{lesson.what_happened}</p>
-          </section>
-          <section>
-            <h2 className="case-h">Root cause</h2>
-            <p>{lesson.root_cause}</p>
-          </section>
-          <section>
-            <h2 className="case-h">What NASA did</h2>
-            <p>{lesson.what_nasa_did}</p>
-          </section>
-          <section className="case-lesson">
-            <h2 className="case-h">The lesson</h2>
-            <blockquote>{lesson.lesson}</blockquote>
-          </section>
-          <section>
-            <h2 className="case-h">When it strikes in Flown</h2>
-            <p>{lesson.design_trigger}</p>
-          </section>
-          <section>
-            <h2 className="case-h">Sources</h2>
-            <ul className="source-list">
-              {lesson.llis_id && (
-                <li><a href={llisUrl(lesson.llis_id)} target="_blank" rel="noreferrer">NASA LLIS lesson {lesson.llis_id}</a></li>
-              )}
-              {lesson.sources.map((s) => (
-                <li key={s.url}><a href={s.url} target="_blank" rel="noreferrer">{s.title}</a></li>
-              ))}
-            </ul>
-          </section>
-        </div>
+      <div className="case-blocks">
+        <section className="case-block">
+          <h2 className="case-h">Why</h2>
+          <p>{whyHead}</p>
+        </section>
+        <section className="case-block">
+          <h2 className="case-h">What NASA did</h2>
+          <p>{didHead}</p>
+          {didRest && <More label="more" className="why">{didRest}</More>}
+        </section>
+        <section className="case-lesson">
+          <h2 className="case-h">The lesson</h2>
+          <blockquote>{lesson.lesson}</blockquote>
+        </section>
+      </div>
 
-        <aside className="vs">
-          <p className="mono-label">Your craft vs the real one</p>
+      <div className="case-more">
+        {whyRest && (
+          <More label="Root cause in full">
+            <p>{lesson.root_cause}</p>
+          </More>
+        )}
+        <More label="When it strikes in Flown">
+          <p>{lesson.design_trigger}</p>
+        </More>
+        <More label={compare ? (compareIsCase ? `Your craft vs ${compare.name}, the craft in this case` : `Your craft vs the real craft for this mission (${compare.name})`) : 'Your craft vs the real one'}>
           <table className="vs-table">
             <thead>
               <tr>
@@ -120,7 +134,7 @@ export default function CaseFile({ id }: { id: string }) {
               </tr>
               <tr>
                 <th>Rocket</th>
-                <td>{brief ? `limit ${kg(brief.launchMassLimitKg)}` : ''}</td>
+                <td>{yourRocket ? yourRocket.name : 'No craft yet'}{yours && <span className="cell-note">allows {kg(yours.massLimitKg)} dry, a simplified game limit</span>}</td>
                 <td>{compare?.launch_vehicle ?? 'Not listed'}</td>
               </tr>
               <tr>
@@ -133,20 +147,17 @@ export default function CaseFile({ id }: { id: string }) {
           {compare && (
             <a className="cite" href={compare.source} target="_blank" rel="noreferrer">NSSDCA record</a>
           )}
-          {lessonCraft && briefCraft && lessonCraft[1] !== briefCraft && (
-            <p className="vs-note">
-              This case happened to {lessonCraft[1].name}: {lessonCraft[1].mass_kg != null ? kg(lessonCraft[1].mass_kg) : 'mass not listed'},
-              launched {lessonCraft[1].launch_date ? prettyDate(lessonCraft[1].launch_date) : 'on a date not listed'} on {lessonCraft[1].launch_vehicle ?? 'a rocket not listed'}.{' '}
-              <a href={lessonCraft[1].source} target="_blank" rel="noreferrer">NSSDCA</a>
-            </p>
-          )}
-          <div className="cta-col">
-            {mission?.run?.done && (
-              <a className="btn btn-primary" href={href('/flight')}>Back to the flight</a>
+        </More>
+        <More label="Sources" count={nSources}>
+          <ul className="source-list">
+            {lesson.llis_id && (
+              <li><a href={llisUrl(lesson.llis_id)} target="_blank" rel="noreferrer">NASA LLIS lesson {lesson.llis_id}</a></li>
             )}
-            <a className="btn btn-ghost" href={href('/sky')}>Lesson sky</a>
-          </div>
-        </aside>
+            {sources.map((s) => (
+              <li key={s.url}><a href={s.url} target="_blank" rel="noreferrer">{s.title}</a></li>
+            ))}
+          </ul>
+        </More>
       </div>
     </article>
   );

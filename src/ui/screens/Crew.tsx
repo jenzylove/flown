@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react';
 import { BRIEFS, REAL_CRAFT, DIFFICULTY, briefById, evaluate, crewScore, lessonById, launchOf } from '../eng';
 import type { Difficulty, FlightResult } from '../eng';
-import { DifficultyPicker } from './Brief';
+import { DifficultyPicker, BriefTile } from './Brief';
+import { More } from '../parts/Bits';
 import { useGame } from '../store';
 import type { Crew as CrewT } from '../store';
 import { go, href } from '../router';
@@ -37,18 +38,23 @@ function Setup() {
 
   return (
     <div className="page crew-page">
-      <header className="page-head">
-        <p className="eyebrow">Crew mode &middot; one device, {MIN} to {MAX} players</p>
-        <h1 className="page-title">Fly as a crew.</h1>
-        <p className="page-lede">
-          Everyone gets the same brief and the same seed, so each real failure rolls the same dice for every craft. Take turns: build, review, fly, then pass the device.
-          The crew board ranks you at the end.
-        </p>
-        {unfinished && (
-          <a className="resume" href={href('/crew/pass')}>
-            Resume the crew of {unfinished.players.map((p) => p.name).join(', ')}
-          </a>
-        )}
+      <header className="app-head">
+        <div>
+          <p className="eyebrow">Crew mode &middot; one device, {MIN} to {MAX} players</p>
+          <h1 className="app-title">Fly as a crew.</h1>
+          <p className="head-line">Same brief, same seed, same failures. Take turns.</p>
+          {unfinished && (
+            <a className="chip-link" href={href('/crew/pass')}>
+              Resume the crew of {unfinished.players.map((p) => p.name).join(', ')}
+            </a>
+          )}
+        </div>
+        <More label="How crews work" className="head-more">
+          <p>
+            Everyone gets the same brief and the same seed, so each real failure rolls the same dice for every craft. Take turns: build, review, fly, then pass the device.
+            The crew board ranks you at the end.
+          </p>
+        </More>
       </header>
 
       <section className="crew-sec">
@@ -82,24 +88,11 @@ function Setup() {
 
       <section className="crew-sec">
         <p className="mono-label">02 &middot; One brief for everyone</p>
-        <div className="opt-list" role="radiogroup" aria-label="Mission brief">
-          {BRIEFS.map((b) => {
-            const on = briefId === b.id;
-            const real = REAL_CRAFT[b.realCraft];
-            return (
-              <button key={b.id} role="radio" aria-checked={on} className={'opt' + (on ? ' on' : '')} onClick={() => setBriefId(b.id)}>
-                <span className="opt-mark" aria-hidden="true" />
-                <span className="opt-name">{b.title}</span>
-                <span className="opt-blurb">{b.goal}</span>
-                <span className="opt-specs">
-                  <span>{usd(Math.round(b.budgetM * DIFFICULTY[difficulty].budgetMult))} budget</span>
-                  <span>{kg(b.launchMassLimitKg)} dry mass limit</span>
-                  {real && <span>Modeled on {real.name}</span>}
-                </span>
-              </button>
-            );
-          })}
-        </div>
+        <ul className="tiles tiles-compact" role="radiogroup" aria-label="Mission brief">
+          {BRIEFS.map((b, i) => (
+            <BriefTile key={b.id} b={b} i={i} radio on={briefId === b.id} budgetMult={DIFFICULTY[difficulty].budgetMult} onPick={() => setBriefId(b.id)} />
+          ))}
+        </ul>
       </section>
 
       <section className="crew-sec">
@@ -217,14 +210,18 @@ function Board() {
 
   return (
     <div className="page board-page">
-      <header className="page-head">
+      <header className="app-head">
+        <div>
         <p className="eyebrow">Crew board &middot; {brief.title} &middot; {DIFFICULTY[crew.difficulty ?? 'engineer'].label} &middot; seed {crew.seed} &middot; {prettyDate(crew.startedAt)}</p>
-        <h1 className="page-title">
+        <h1 className="app-title">
           {winners.length > 1 ? `${winners.map((w) => w.name).join(' and ')} share the top.` : `${winners[0].name} flew it best.`}
         </h1>
-        <p className="page-lede">
-          Score is science percent, plus 15 for each real failure caught at review, minus 5 for each one missed, minus 5 for each pin on something with no real risk for that craft. One seed for everyone, so each real failure rolled the same dice for every craft. Only the craft and the calls differed.
-        </p>
+        </div>
+        <More label="How the score works" className="head-more">
+          <p>
+            Score is science percent, plus 15 for each real failure caught at review, minus 5 for each one missed, minus 5 for each pin on something with no real risk for that craft. One seed for everyone, so each real failure rolled the same dice for every craft. Only the craft and the calls differed.
+          </p>
+        </More>
       </header>
 
       <ol className="board">
@@ -241,8 +238,45 @@ function Board() {
         ))}
       </ol>
 
-      <section className="board-sec">
-        <div className="sec-head"><span className="sec-no">01</span><h2>Your craft against the real one</h2></div>
+      <div className="cta-row">
+        <button className="btn btn-primary" onClick={() => { startCrew(crew.players.map((p) => p.name), crew.briefId, crew.difficulty); go('/crew/pass'); }}>
+          Rematch on a new seed
+        </button>
+        <a className="btn btn-ghost" href={href('/sky')}>Lesson sky</a>
+        <button className="btn btn-ghost" onClick={() => { endCrew(); go('/crew'); }}>New crew</button>
+      </div>
+
+      <div className="board-more">
+      <More label="Which real failures hit whom" count={lessonIds.length} open>
+        {lessonIds.length === 0 ? (
+          <p className="result-quiet">Nothing from the lesson library came for any craft on this seed.</p>
+        ) : (
+          <div className="table-scroll">
+            <table className="vs-table board-table">
+              <thead>
+                <tr>
+                  <th scope="col">Case file</th>
+                  {done.map((d) => <th scope="col" key={d.name}>{d.name}</th>)}
+                </tr>
+              </thead>
+              <tbody>
+                {lessonIds.map((id) => (
+                  <tr key={id}>
+                    <td className="bd-case"><a href={href('/case/' + id)}>{lessonById(id)?.mission ?? id}</a></td>
+                    {done.map((d) => {
+                      const m = mark(d.result, id);
+                      return <td key={d.name} className={m.c === 'bad' ? 'alarm' : m.c}>{m.t}</td>;
+                    })}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+        <p className="vs-note">Every lesson above is now a star in the Lesson Sky on this device.</p>
+      </More>
+
+      <More label="Your craft against the real one">
         <div className="table-scroll">
           <table className="vs-table board-table">
             <thead>
@@ -281,45 +315,9 @@ function Board() {
             {real.name} figures from the <a href={real.source} target="_blank" rel="noreferrer">NASA Space Science Data Coordinated Archive</a>.
           </p>
         )}
-      </section>
-
-      <section className="board-sec">
-        <div className="sec-head"><span className="sec-no">02</span><h2>Which real failures hit whom</h2></div>
-        {lessonIds.length === 0 ? (
-          <p className="result-quiet">Nothing from the lesson library came for any craft on this seed.</p>
-        ) : (
-          <div className="table-scroll">
-            <table className="vs-table board-table">
-              <thead>
-                <tr>
-                  <th scope="col">Case file</th>
-                  {done.map((d) => <th scope="col" key={d.name}>{d.name}</th>)}
-                </tr>
-              </thead>
-              <tbody>
-                {lessonIds.map((id) => (
-                  <tr key={id}>
-                    <td className="bd-case"><a href={href('/case/' + id)}>{lessonById(id)?.mission ?? id}</a></td>
-                    {done.map((d) => {
-                      const m = mark(d.result, id);
-                      return <td key={d.name} className={m.c === 'bad' ? 'alarm' : m.c}>{m.t}</td>;
-                    })}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-        <p className="vs-note">Every lesson above is now a star in the Lesson Sky on this device.</p>
-      </section>
-
-      <div className="cta-row">
-        <button className="btn btn-primary" onClick={() => { startCrew(crew.players.map((p) => p.name), crew.briefId, crew.difficulty); go('/crew/pass'); }}>
-          Rematch on a new seed
-        </button>
-        <a className="btn btn-ghost" href={href('/sky')}>Lesson sky</a>
-        <button className="btn btn-ghost" onClick={() => { endCrew(); go('/crew'); }}>New crew</button>
+      </More>
       </div>
+
     </div>
   );
 }

@@ -3,49 +3,62 @@ import type { Brief as BriefT, Difficulty } from '../eng';
 import { useGame } from '../store';
 import { go, href } from '../router';
 import { usd, kg, n0, two } from '../format';
+import { TargetGlyph, More } from '../parts/Bits';
 
 const DIFFS: Difficulty[] = ['cadet', 'engineer', 'veteran'];
+const REACH: Record<BriefT['deltaVNeed'], number> = { low: 1, medium: 2, high: 3 };
 
-/** Cadet, Engineer or Veteran, in the option row style. Shared by the brief screen and crew setup. */
+/** Cadet, Engineer or Veteran as one segmented control. Shared by the brief screen and crew setup. */
 export function DifficultyPicker({ value, onChange }: { value: Difficulty; onChange: (d: Difficulty) => void }) {
   return (
-    <div className="opt-list" role="radiogroup" aria-label="Difficulty">
-      {DIFFS.map((id) => {
-        const d = DIFFICULTY[id];
-        const on = value === id;
-        return (
-          <button key={id} role="radio" aria-checked={on} className={'opt' + (on ? ' on' : '')} onClick={() => onChange(id)}>
-            <span className="opt-mark" aria-hidden="true" />
-            <span className="opt-name">{d.label}</span>
-            <span className="opt-blurb">{d.blurb}</span>
-          </button>
-        );
-      })}
+    <div className="seg-wrap">
+      <div className="seg" role="radiogroup" aria-label="Difficulty">
+        {DIFFS.map((id) => {
+          const d = DIFFICULTY[id];
+          const on = value === id;
+          return (
+            <button key={id} role="radio" aria-checked={on} className={'seg-btn' + (on ? ' on' : '')} title={d.blurb} onClick={() => onChange(id)}>
+              {d.label}
+            </button>
+          );
+        })}
+      </div>
+      <span className="seg-note">{DIFFICULTY[value].blurb}</span>
     </div>
   );
 }
 
-function BriefRow({ b, i, onPick, daily, budgetMult }: { b: BriefT; i: number; onPick: () => void; daily?: boolean; budgetMult: number }) {
+/** Three pips for how hard the trip is on the engine. */
+export function Reach({ need }: { need: BriefT['deltaVNeed'] }) {
+  return (
+    <span className="reach" title={`Engine demand: ${need}`} aria-label={`Engine demand ${need}`}>
+      {[1, 2, 3].map((k) => <i key={k} className={k <= REACH[need] ? 'on' : ''} />)}
+    </span>
+  );
+}
+
+export function BriefTile({ b, i, onPick, budgetMult, label, radio, on }: { b: BriefT; i: number; onPick: () => void; budgetMult: number; label?: string; radio?: boolean; on?: boolean }) {
   const real = REAL_CRAFT[b.realCraft];
   return (
-    <li className={'brief-row' + (daily ? ' brief-daily' : '')}>
-      <button className="brief-hit" onClick={onPick} aria-label={`Fly ${b.title}`}>
-        <span className="brief-no">{daily ? 'Today' : two(i + 1)}</span>
-        <span className="brief-main">
-          <span className="brief-target">{b.target}</span>
-          <span className="brief-title">{b.title}</span>
-          <span className="brief-goal">{b.goal}</span>
-          <span className="brief-story">{b.story}</span>
+    <li className={'tile' + (on ? ' on' : '')}>
+      <button
+        className="tile-hit"
+        onClick={onPick}
+        {...(radio ? { role: 'radio', 'aria-checked': !!on } : { 'aria-label': label ?? `Fly ${b.title}` })}
+        title={`${b.story} Up to ${b.maxInstruments} instruments.${real ? ` Modeled on ${real.name}.` : ''}`}
+      >
+        <span className="tile-top">
+          <span className="tile-no">{two(i + 1)}</span>
+          <span className="tile-target">{b.target}</span>
+          <Reach need={b.deltaVNeed} />
         </span>
-        <span className="brief-specs">
-          <span><em>Budget</em>{usd(Math.round(b.budgetM * budgetMult))}</span>
-          <span><em>Dry mass limit</em>{kg(b.launchMassLimitKg)}</span>
-          <span><em>Mission</em>{n0(b.missionDays)} days</span>
-          <span><em>Instruments</em>up to {b.maxInstruments}</span>
-          {real && <span className="brief-real"><em>Modeled on</em>{real.name}</span>}
-        </span>
-        <span className="brief-go" aria-hidden="true">
-          <svg viewBox="0 0 40 12" width="40" height="12"><path d="M0 6 H38 M32 1 L38 6 L32 11" /></svg>
+        <TargetGlyph id={b.id} />
+        <span className="tile-title">{b.title}</span>
+        <span className="tile-goal">{b.goal}</span>
+        <span className="tile-nums">
+          <span className="tile-budget">{usd(Math.round(b.budgetM * budgetMult))}</span>
+          <span className="tile-sub">{kg(b.launchMassLimitKg)} &middot; {n0(b.missionDays)} days</span>
+          {!radio && <span className="tile-start" aria-hidden="true">Start</span>}
         </span>
       </button>
     </li>
@@ -78,55 +91,54 @@ export default function Brief() {
 
   return (
     <div className="page brief-page">
-      <header className="page-head">
-        <p className="eyebrow">Step 1 of 4 &middot; Mission brief</p>
-        <h1 className="page-title">Choose where you are going.</h1>
-        <p className="page-lede">
-          Each brief carries about the real mission&rsquo;s cost as its budget, and a simplified dry mass limit for a standard rocket. Your craft lives or dies inside them.
-        </p>
-        {resumeTitle && mission?.crewIndex === undefined && (
-          <a className="resume" href={href('/hangar')}>
-            Resume your craft for <b>{resumeTitle}</b>
-          </a>
-        )}
-        <div className="paths">
-          <p className="path path-solo">
-            <span className="mono-label">Solo</span>
-            Pick a brief below and fly it alone.
-          </p>
-          <p className="path path-crew">
-            <span className="mono-label">Crew &middot; 2 to 4 players</span>
-            One device, one brief, the same failures for everyone. Take turns, then compare.
-            <a className="btn btn-ghost btn-small" href={href(crewOpen ? '/crew/pass' : '/crew')}>
-              {crewOpen ? `Resume the crew of ${crewOpen.players.length}` : 'Fly as a crew'}
-            </a>
-          </p>
+      <header className="app-head">
+        <div>
+          <p className="eyebrow">Step 1 of 4 &middot; Mission brief</p>
+          <h1 className="app-title">Choose where you are going.</h1>
         </div>
+        <DifficultyPicker value={difficulty} onChange={setDifficulty} />
       </header>
 
-      <section className="daily">
-        <p className="mono-label">Difficulty</p>
-        <DifficultyPicker value={difficulty} onChange={setDifficulty} />
-      </section>
+      <div className="brief-bar">
+        <button className="today" onClick={() => pick(today.brief.id, today.seed, true)} aria-label={`Fly today’s mission, ${today.brief.title}`}>
+          <span className="today-k">Today</span>
+          <span className="today-t">{today.brief.title}</span>
+          <span className="today-s">seed {today.seed}{todayDone ? ' · flown' : ''}</span>
+          <svg className="today-go" viewBox="0 0 40 12" width="34" height="12" aria-hidden="true"><path d="M0 6 H38 M32 1 L38 6 L32 11" /></svg>
+        </button>
+        {resumeTitle && mission?.crewIndex === undefined && (
+          <a className="chip-link" href={href('/hangar')}>Resume {resumeTitle}</a>
+        )}
+        <a className="chip-link" href={href(crewOpen ? '/crew/pass' : '/crew')}>
+          {crewOpen ? `Resume crew of ${crewOpen.players.length}` : 'Fly as a crew'}
+        </a>
+      </div>
 
-      <section className="daily">
-        <p className="mono-label">
-          Mission of the day {todayDone && <span className="done-tag">flown today</span>}
+      <ul className="tiles">
+        {BRIEFS.map((b, i) => (
+          <BriefTile key={b.id} b={b} i={i} budgetMult={budgetMult} onPick={() => pick(b.id, Math.floor(Math.random() * 100000), false)} />
+        ))}
+      </ul>
+
+      <More label="How briefs work" className="foot-more">
+        <p>
+          Each brief carries about the real mission&rsquo;s cost as its budget, and a simplified dry mass limit for a standard rocket. Your craft lives or dies inside them.
+          Pips show how hard the trip is on the engine.
         </p>
-        <ul className="brief-list">
-          <BriefRow b={today.brief} i={0} daily budgetMult={budgetMult} onPick={() => pick(today.brief.id, today.seed, true)} />
+        <p>Today&rsquo;s mission: everyone flying today gets the same failures in the same order. Seed {today.seed}.</p>
+        <p>Crew: 2 to 4 players on one device, one brief, the same failures for everyone. Take turns, then compare.</p>
+        <ul className="brief-facts">
+          {BRIEFS.map((b) => {
+            const real = REAL_CRAFT[b.realCraft];
+            return (
+              <li key={b.id}>
+                <b>{b.title}</b> {b.story} Budget {usd(Math.round(b.budgetM * budgetMult))}, dry mass limit {kg(b.launchMassLimitKg)}, {n0(b.missionDays)} days, up to {b.maxInstruments} instruments
+                {real ? `, modeled on ${real.name}` : ''}.
+              </li>
+            );
+          })}
         </ul>
-        <p className="daily-note">Everyone flying today gets the same failures in the same order. Seed {today.seed}.</p>
-      </section>
-
-      <section>
-        <p className="mono-label">All briefs</p>
-        <ul className="brief-list">
-          {BRIEFS.map((b, i) => (
-            <BriefRow key={b.id} b={b} i={i} budgetMult={budgetMult} onPick={() => pick(b.id, Math.floor(Math.random() * 100000), false)} />
-          ))}
-        </ul>
-      </section>
+      </More>
     </div>
   );
 }

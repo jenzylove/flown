@@ -4,6 +4,7 @@ import { useGame } from '../store';
 import { go, href } from '../router';
 import { hash, pct, isoDay, prettyDate, n0, two } from '../format';
 import { useNarrow } from '../../three/palette';
+import { More } from '../parts/Bits';
 
 const PAD = 46;
 
@@ -115,12 +116,17 @@ export default function Sky() {
 
   return (
     <div className="page sky-page">
-      <header className="page-head sky-head">
-        <p className="eyebrow">Lesson sky</p>
-        <h1 className="page-title">Every star is a real failure.</h1>
-        <p className="page-lede">
-          Faint stars you have not met. Red ones hit your craft. Bright ones you caught before launch. Tap any star to open its case file.
-        </p>
+      <header className="app-head sky-head">
+        <div>
+          <p className="eyebrow">Lesson sky &middot; {LESSONS.length} real failures</p>
+          <h1 className="app-title">Every star is a real failure.</h1>
+          <p className="sky-key">
+            <span><i className="k-unseen" />Not met</span>
+            <span><i className="k-hit" />Hit you</span>
+            <span><i className="k-caught" />Caught</span>
+            <span className="dim">Tap a star for its case file</span>
+          </p>
+        </div>
       </header>
 
       <div className="sky-wrap">
@@ -187,21 +193,22 @@ export default function Sky() {
         <div className="stat big">
           <span className="stat-label">Caught before launch</span>
           <span className="stat-num">{rate === null ? 'None yet' : pct(rate * 100)}</span>
-          <span className="stat-sub">
+          <span className="stat-sub">{rate === null ? 'Fly a mission' : `${caughtN} of ${caughtN + missedN} · ${wrongN} wrong ${wrongN === 1 ? 'pin' : 'pins'} · ${runs.length} ${runs.length === 1 ? 'flight' : 'flights'}`}</span>
+          <More label="how it is counted" className="why">
             {rate === null
               ? 'Fly a mission. Your rate is caught divided by caught plus missed plus wrong pins, over every flight.'
-              : `${caughtN} caught out of ${caughtN + missedN} real ${caughtN + missedN === 1 ? 'failure' : 'failures'} that came for your craft, with ${wrongN} wrong ${wrongN === 1 ? 'pin' : 'pins'} counted against you, over ${runs.length} ${runs.length === 1 ? 'flight' : 'flights'}.`}
-          </span>
+              : `${caughtN} caught out of ${caughtN + missedN} real ${caughtN + missedN === 1 ? 'failure' : 'failures'} that came for your craft, with ${wrongN} wrong ${wrongN === 1 ? 'pin' : 'pins'} counted against you, over ${runs.length} ${runs.length === 1 ? 'flight' : 'flights'}. Rate is caught divided by caught plus missed plus wrong pins.`}
+          </More>
         </div>
         <div className="stat">
           <span className="stat-label">Streak</span>
-          <span className="stat-num">{streak.count} {streak.count === 1 ? 'day' : 'days'}</span>
+          <span className="stat-num">{streak.count} <small>{streak.count === 1 ? 'day' : 'days'}</small></span>
           <span className="stat-sub">{streak.last ? `Last flight ${prettyDate(streak.last)}` : 'No flights yet'}</span>
         </div>
-        <div className="stat">
+        <div className="stat" title={`${PLAYABLE_LESSONS.length} can strike in play; the rest are library reading.`}>
           <span className="stat-label">Stars</span>
           <span className="stat-num">{count('caught')} <small>bright</small> {count('hit')} <small className="alarm">red</small></span>
-          <span className="stat-sub">{count('unseen')} of {LESSONS.length} not met yet. {PLAYABLE_LESSONS.length} can strike in play; the rest are library reading.</span>
+          <span className="stat-sub">{count('unseen')} of {LESSONS.length} not met &middot; {PLAYABLE_LESSONS.length} playable</span>
         </div>
         <div className="stat today">
           <span className="stat-label">Mission of the day</span>
@@ -218,53 +225,53 @@ export default function Sky() {
         </div>
       </section>
 
-      <section className="best">
-        <p className="mono-label">Best flights &middot; stored on this device only</p>
-        {boards.length === 0 ? (
-          <p className="best-empty">No flights on this device yet. Your best five per brief land here, with every crew turn flown on this screen.</p>
-        ) : (
-          <>
-            <p className="best-note">
-              Top five per brief, kept in this browser and nowhere else. Score is science percent, plus 15 for each real failure caught at review, minus 5 for each one missed, minus 5 for each pin on something with no real risk for that craft.
-            </p>
-            <div className="best-grid">
-              {boards.map(({ brief, top }) => (
-                <div key={brief.id} className="best-board">
-                  <p className="best-title">{brief.title}</p>
-                  <ol className="best-list">
-                    {top.map(({ r, score }, k) => (
-                      <li key={r.at}>
-                        <span className="b-rank">{two(k + 1)}</span>
-                        <span className="b-who">{r.crew ?? 'Solo'}{r.refly ? ' (refly)' : ''}<em>{prettyDate(r.day)}</em></span>
-                        <span className="b-sci">{pct(r.sciencePct)}<em>science</em></span>
-                        <span className="b-caught">{n0(r.caught.length)}<em>caught</em></span>
-                        <span className="b-score">{n0(score)}</span>
-                      </li>
-                    ))}
-                  </ol>
-                </div>
-              ))}
-            </div>
-          </>
-        )}
-      </section>
+      <div className="sky-more">
+        <More label="Best flights" count={boards.length === 0 ? 0 : boards.reduce((x, y) => x + y.top.length, 0)}>
+          {boards.length === 0 ? (
+            <p className="best-empty">No flights on this device yet. Your best five per brief land here, with every crew turn flown on this screen.</p>
+          ) : (
+            <>
+              <p className="best-note">
+                Top five per brief, kept in this browser and nowhere else. Score is science percent, plus 15 for each real failure caught at review, minus 5 for each one missed, minus 5 for each pin on something with no real risk for that craft.
+              </p>
+              <div className="best-grid">
+                {boards.map(({ brief, top }) => (
+                  <div key={brief.id} className="best-board">
+                    <p className="best-title">{brief.title}</p>
+                    <ol className="best-list">
+                      {top.map(({ r, score }, k) => (
+                        <li key={r.at}>
+                          <span className="b-rank">{two(k + 1)}</span>
+                          <span className="b-who">{r.crew ?? 'Solo'}{r.refly ? ' (refly)' : ''}<em>{prettyDate(r.day)}</em></span>
+                          <span className="b-sci">{pct(r.sciencePct)}<em>science</em></span>
+                          <span className="b-caught">{n0(r.caught.length)}<em>caught</em></span>
+                          <span className="b-score">{n0(score)}</span>
+                        </li>
+                      ))}
+                    </ol>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+        </More>
 
-      {runs.length > 0 && (
-        <section className="history">
-          <p className="mono-label">Flight log</p>
-          <ol className="hist-list">
-            {[...runs].reverse().slice(0, 12).map((r) => (
-              <li key={r.at}>
-                <span className="h-day">{prettyDate(r.day)}</span>
-                <span className="h-brief">{(() => { try { return briefById(r.briefId).title; } catch { return r.briefId; } })()}{r.refly && ' (refly)'}{r.crew && ` · ${r.crew}`}</span>
-                <span className={'h-out o-' + r.outcome}>{r.outcome}</span>
-                <span className="h-sci">{pct(r.sciencePct)} science</span>
-                <span className="h-catch">{r.caught.length} caught &middot; {r.missed.length} missed</span>
-              </li>
-            ))}
-          </ol>
-        </section>
-      )}
+        {runs.length > 0 && (
+          <More label="Flight log" count={Math.min(12, runs.length)}>
+            <ol className="hist-list">
+              {[...runs].reverse().slice(0, 12).map((r) => (
+                <li key={r.at}>
+                  <span className="h-day">{prettyDate(r.day)}</span>
+                  <span className="h-brief">{(() => { try { return briefById(r.briefId).title; } catch { return r.briefId; } })()}{r.refly && ' (refly)'}{r.crew && ` · ${r.crew}`}</span>
+                  <span className={'h-out o-' + r.outcome}>{r.outcome}</span>
+                  <span className="h-sci">{pct(r.sciencePct)} science</span>
+                  <span className="h-catch">{r.caught.length} caught &middot; {r.missed.length} missed</span>
+                </li>
+              ))}
+            </ol>
+          </More>
+        )}
+      </div>
     </div>
   );
 }

@@ -16,6 +16,7 @@ export default function Lab() {
   return (
     <div className="page">
       <p className="eyebrow">Failure lab</p>
+      <h1 className="app-title">Every failure, on one craft.</h1>
       <div className="cta-row" style={{ marginTop: 12 }}>
         {ANIMS.map((a) => (
           <button key={a} className={'btn btn-small ' + (a === anim ? 'btn-on' : 'btn-ghost')} onClick={() => { setAnim(a); setK((x) => x + 1); }}>

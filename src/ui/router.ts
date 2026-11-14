@@ -1,7 +1,10 @@
 import { useEffect, useState } from 'react';
 
 function read(): string {
-  const h = window.location.hash.replace(/^#/, '');
+  let h = window.location.hash.replace(/^#/, '');
+  // A challenge link pasted without its "#", or with the hash slash lost, still reaches the challenge screen.
+  if (!h && /^\/(fly|case)\//.test(window.location.pathname)) h = window.location.pathname + window.location.search;
+  if (h && !h.startsWith('/')) h = '/' + h;
   return h || '/';
 }
 

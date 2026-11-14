@@ -4,6 +4,7 @@ import type { FlightResult, Design } from '../eng';
 import type { Mission } from '../store';
 import { readFriend, shareUrl, copyText } from '../share';
 import { href } from '../router';
+import { More } from './Bits';
 import { kg, usd, watts, pct, n0 } from '../format';
 
 /** "Challenge a friend": copies the share link, and shows it in a field when the clipboard is blocked. */
@@ -71,35 +72,40 @@ export function ComparePanel({ mission, design, result }: { mission: Mission; de
     fScore === null ? null : yScore > fScore ? 'You beat your friend.' : yScore < fScore ? 'Your friend flew it better.' : 'Dead level with your friend.';
   return (
     <section className="compare">
-      <p className="mono-label">Your friend&rsquo;s craft against yours &middot; seed {friend.seed}{ch.mode === 'same' ? ' · the same design' : ''}</p>
-      {verdict && <p className="compare-verdict">{verdict}</p>}
-      <div className="table-scroll">
-        <table className="vs-table compare-table">
-          <thead>
-            <tr><th scope="col"></th><th scope="col">Friend</th><th scope="col">You</th></tr>
-          </thead>
-          <tbody>
-            {rows.map(([k, a, b]) => (
-              <tr key={k}><th scope="row">{k}</th><td>{a}</td><td>{b}</td></tr>
-            ))}
-            <tr>
-              <th scope="row">Hit by</th>
-              <td>{fr ? <Lessons ids={fr.triggered} tone="bad" /> : <Lessons ids={friend.incoming} tone="bad" />}</td>
-              <td><Lessons ids={result.triggered} tone="bad" /></td>
-            </tr>
-            <tr>
-              <th scope="row">Stopped by a fix</th>
-              <td>{fr ? <Lessons ids={fr.prevented ?? []} /> : <span className="dim">Not in the link</span>}</td>
-              <td><Lessons ids={result.prevented ?? []} /></td>
-            </tr>
-          </tbody>
-        </table>
+      <p className="mono-label">Against your friend &middot; seed {friend.seed}{ch.mode === 'same' ? ' · the same design' : ''}</p>
+      <div className="compare-top">
+        <span className="cmp-score"><b>{n0(yScore)}</b><small>You</small></span>
+        <span className="cmp-score cmp-them"><b>{fScore === null ? '?' : n0(fScore)}</b><small>Friend</small></span>
+        {verdict && <p className="compare-verdict">{verdict}</p>}
       </div>
-      <p className="vs-note">
-        Score is science percent, plus 15 for each real failure caught at review, minus 5 for each one missed, minus 5 for each pin on something with no real risk for that craft.
-        {!fr && ' The link carried only the design, so the friend column lists the failures that come for that craft on this seed before any pins.'}
-      </p>
+      <More label="Side by side" count={rows.length + 2}>
+        <div className="table-scroll">
+          <table className="vs-table compare-table">
+            <thead>
+              <tr><th scope="col"></th><th scope="col">Friend</th><th scope="col">You</th></tr>
+            </thead>
+            <tbody>
+              {rows.map(([k, a, b]) => (
+                <tr key={k}><th scope="row">{k}</th><td>{a}</td><td>{b}</td></tr>
+              ))}
+              <tr>
+                <th scope="row">Hit by</th>
+                <td>{fr ? <Lessons ids={fr.triggered} tone="bad" /> : <Lessons ids={friend.incoming} tone="bad" />}</td>
+                <td><Lessons ids={result.triggered} tone="bad" /></td>
+              </tr>
+              <tr>
+                <th scope="row">Stopped by a fix</th>
+                <td>{fr ? <Lessons ids={fr.prevented ?? []} /> : <span className="dim">Not in the link</span>}</td>
+                <td><Lessons ids={result.prevented ?? []} /></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p className="vs-note">
+          Score is science percent, plus 15 for each real failure caught at review, minus 5 for each one missed, minus 5 for each pin on something with no real risk for that craft.
+          {!fr && ' The link carried only the design, so the friend column lists the failures that come for that craft on this seed before any pins.'}
+        </p>
+      </More>
     </section>
   );
 }
-
