@@ -1,6 +1,7 @@
 import { useRoute } from './ui/router';
 import { Shell } from './ui/Shell';
 import ColdOpen from './ui/screens/ColdOpen';
+import Landing from './ui/screens/Landing';
 import Brief from './ui/screens/Brief';
 import Hangar from './ui/screens/Hangar';
 import Review from './ui/screens/Review';
@@ -18,7 +19,10 @@ function Screen({ route }: { route: string }) {
   switch (head) {
     case '':
     case undefined:
+      return <Landing />;
+    case 'juno':
       return <ColdOpen />;
+    case 'play':
     case 'brief':
       return <Brief />;
     case 'hangar':
@@ -42,7 +46,7 @@ function Screen({ route }: { route: string }) {
     case 'lab':
       return <Lab />;
     default:
-      return <ColdOpen />;
+      return <Landing />;
   }
 }
 

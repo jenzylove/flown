@@ -14,7 +14,7 @@ export function Craft3D(props: CraftViewProps) {
   );
 }
 
-function ThemeToggle() {
+export function ThemeToggle() {
   const [t, setT] = useState<'light' | 'dark'>(() => effectiveTheme());
   useEffect(() => {
     const p = loadTheme();
@@ -47,7 +47,12 @@ function ThemeToggle() {
 export function Shell({ route, children }: { route: string; children: ReactNode }) {
   const streak = useGame((s) => s.streak);
   const top = route.split('/')[1] || '';
-  const flying = ['brief', 'hangar', 'review', 'flight', 'refly', 'crew', 'fly'].includes(top);
+  const flying = ['play', 'brief', 'hangar', 'review', 'flight', 'refly', 'crew', 'fly'].includes(top);
+  const APP = ['juno', 'play', 'brief', 'hangar', 'refly', 'review', 'flight', 'case', 'sky', 'proof', 'crew', 'fly', 'lab'];
+  if (!APP.includes(top.split('?')[0])) {
+    // The landing page brings its own top bar and footer.
+    return <div className="shell">{children}</div>;
+  }
   return (
     <div className="shell">
       <header className="topbar">
@@ -56,7 +61,7 @@ export function Shell({ route, children }: { route: string; children: ReactNode 
           <span className="wm-tag">mission review board</span>
         </a>
         <nav className="topnav">
-          <a href={href('/brief')} className={flying ? 'on' : ''}>Fly</a>
+          <a href={href('/play')} className={flying ? 'on' : ''}>Fly</a>
           <a href={href('/sky')} className={top === 'sky' ? 'on' : ''}>
             Sky
             {streak.count > 0 && <em className="streak-dot">{streak.count}</em>}

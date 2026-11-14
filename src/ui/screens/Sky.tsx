@@ -7,7 +7,7 @@ import { useNarrow } from '../../three/palette';
 
 const PAD = 46;
 
-interface Star {
+export interface Star {
   id: string;
   x: number;
   y: number;
@@ -18,7 +18,7 @@ interface Star {
 }
 
 /** Deterministic layout: each lesson id hashes to a spot, then a fixed relaxation spreads crowded stars. */
-function layout(W: number, H: number): Star[] {
+export function layout(W: number, H: number): Star[] {
   const stars: Star[] = LESSONS.map((l) => {
     const h = hash(l.id);
     const h2 = hash(l.id + ':y');
@@ -56,7 +56,7 @@ function layout(W: number, H: number): Star[] {
   return stars;
 }
 
-function shortName(m: string) {
+export function shortName(m: string) {
   const s = m.replace(/\s*\(.*?\)\s*/g, ' ').trim();
   return s.length > 24 ? s.slice(0, 22).trim() + '…' : s;
 }
