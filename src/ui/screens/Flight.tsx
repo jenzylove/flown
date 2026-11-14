@@ -9,6 +9,8 @@ import { n0, pct, sep } from '../format';
 import { NoMission } from './NoMission';
 import { ShareBox, ComparePanel } from '../parts/Versus';
 import { More, splitFirst } from '../parts/Bits';
+import { useCoop, TeamBoard } from '../parts/Coop';
+import { ownerOfLesson, itemOfLesson, groupOfItem, roleOfGroup } from '../coop';
 
 const PHASES: FlightEvent['phase'][] = ['launch', 'cruise', 'arrival', 'operations', 'end'];
 const PHASE_NAME: Record<FlightEvent['phase'], string> = {
@@ -27,6 +29,9 @@ export default function Flight() {
   const refly = useGame((s) => s.refly);
   const launch = useGame((s) => s.launch);
   const crew = useGame((s) => s.crew);
+  const coopCall = useGame((s) => s.coopCall);
+  const startCoop = useGame((s) => s.startCoop);
+  const coop = useCoop();
   const run = mission?.run ?? null;
   const events = run?.events ?? [];
   const [shown, setShown] = useState(() => (mission?.run?.done && mission.recorded ? mission.run.events.length : 0));
@@ -118,6 +123,7 @@ export default function Flight() {
       const nasaLabel = crisis.options.find((o) => o.id === n.optionId)?.label ?? n.text;
       setNasaNotes((m) => ({ ...m, [idx]: { yours: label, nasa: n.text || nasaLabel, same: n.optionId === optionId } }));
     }
+    if (coop) coopCall(crisis.lessonId, ownerOfLesson(coop.players.length, crisis.lessonId), n ? n.optionId === optionId : null);
     resolve(optionId);
   };
 
@@ -125,6 +131,9 @@ export default function Flight() {
   const crewTurn = mission.crewIndex !== undefined && crew && crew.briefId === mission.briefId && crew.seed === mission.seed ? crew : null;
   const crewName = crewTurn ? crewTurn.players[mission.crewIndex!]?.name : null;
   const nextUp = crewTurn && crewTurn.turn < crewTurn.players.length ? crewTurn.players[crewTurn.turn] : null;
+  const decider = coop && crisis
+    ? { name: coop.players[ownerOfLesson(coop.players.length, crisis.lessonId)]?.name, role: roleOfGroup(coop.players.length, groupOfItem(itemOfLesson(crisis.lessonId) ?? '')).name }
+    : null;
   const labelFor = (id: string) => items.find((i) => i.id === id)?.label ?? id;
 
   const logOpen = (i: number) => setOpenRows((m) => ({ ...m, [i]: !m[i] }));
@@ -176,7 +185,7 @@ export default function Flight() {
     <div className={'page flight' + (lost ? ' is-lost' : '') + (finished ? ' is-done' : '')}>
       <header className="app-head flight-head">
         <div>
-          <p className="eyebrow">{crewName ? `${crewName} flying` : 'Step 4 of 4'} &middot; Flight &middot; {brief.title} &middot; seed {run.seed}</p>
+          <p className="eyebrow">{coop ? 'One craft' : crewName ? `${crewName} flying` : 'Step 4 of 4'} &middot; Flight &middot; {brief.title} &middot; seed {run.seed}</p>
           <h1 className="app-title">{finished && r ? OUTCOME[r.outcome] : current ? `Day ${n0(current.day)}` : 'Countdown'}</h1>
         </div>
       </header>
@@ -239,12 +248,16 @@ export default function Flight() {
                 <span className="result-num">{pct(r.sciencePct)}</span>
                 <span className="result-cap">of planned science came home</span>
               </div>
+              {coop ? (
+                <TeamBoard crew={coop} result={r} />
+              ) : (
               <div className="result-groups">
                 <ResultGroup title="Prevented" ids={r.prevented ?? []} tone="good" hint="Prevented by your fixes" />
                 <ResultGroup title="Missed" ids={r.missed} tone="bad" hint="Missed at review" />
                 <ResultGroup title="Quiet risks" ids={quiet} tone="mid" hint="Real risks on your craft that stayed quiet this flight" />
               </div>
-              {(pinnedNotFixed.length > 0 || r.falseFlags.length > 0) && (
+              )}
+              {!coop && (pinnedNotFixed.length > 0 || r.falseFlags.length > 0) && (
                 <div className="result-extra">
                   {pinnedNotFixed.length > 0 && (
                     <p>
@@ -274,7 +287,25 @@ export default function Flight() {
                 </More>
               )}
               {mission.challenge && mission.recorded && <ComparePanel mission={mission} design={run.design} result={r} />}
-              {crewTurn ? (
+              {coop ? (
+                <>
+                  <div className="cta-row">
+                    {(r.sciencePct < 100 || r.triggered.length + r.missed.length > 0) && (
+                      <button className="btn btn-primary" onClick={() => { refly(); go('/refly'); }}>Fix it together and refly</button>
+                    )}
+                    <button
+                      className="btn btn-ghost"
+                      onClick={() => { startCoop(coop.players.map((p) => p.name), coop.briefId, coop.difficulty); go('/hangar'); }}
+                    >
+                      Same crew, new seed
+                    </button>
+                  </div>
+                  <p className="quiet-links">
+                    <a href={href('/sky')}>Lesson sky</a>
+                    <a href={href('/crew')}>New crew</a>
+                  </p>
+                </>
+              ) : crewTurn ? (
                 <div className="cta-row">
                   {nextUp ? (
                     <button className="btn btn-primary" onClick={() => go('/crew/pass')}>Pass the device to {nextUp.name}</button>
@@ -310,6 +341,11 @@ export default function Flight() {
               <div className="crisis-veil" aria-hidden="true" />
               <section className="crisis" role="dialog" aria-modal="true" aria-label="Crisis" ref={crisisRef}>
                 <p className="mono-label alarm">Crisis &middot; day {n0(crisis.day)} &middot; {lessonById(crisis.lessonId)?.mission}</p>
+                {decider && (
+                  <p className="crisis-owner">
+                    {lessonById(crisis.lessonId)?.mission}: <b>{decider.name}</b> ({decider.role}) decides
+                  </p>
+                )}
                 <p className="crisis-prompt">{crisis.prompt}</p>
                 <div className="choice-list">
                   {crisis.options.map((o, i) => (

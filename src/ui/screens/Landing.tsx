@@ -807,15 +807,15 @@ export default function Landing() {
         <div className="lp-together">
           <div className="lp-mode" data-reveal>
             <p className="lp-mode-k">Crew mode &middot; 2 to 4 players &middot; one device</p>
-            <p className="lp-mode-t">Pass the phone around the table.</p>
+            <p className="lp-mode-t">One craft. Every role has a say.</p>
             <p>
-              Everyone builds for the same brief and seed, one turn each. The crew board ranks science that came home, plus every real failure caught
-              before launch.
+              Split the craft by role: mission lead, power and thermal, comms and science, propulsion and pointing. Each player owns their systems and their
+              review pins, and the craft launches only when everyone calls GO. Prefer a contest? Race mode gives each player their own craft on the same seed.
             </p>
-            <ol className="lp-roster" aria-label="How a crew turn passes">
-              <li className="done"><span>01</span>Player one flies</li>
-              <li className="now"><span>02</span>Pass the device</li>
-              <li><span>03</span>Crew board</li>
+            <ol className="lp-roster" aria-label="How a one craft crew plays">
+              <li className="done"><span>01</span>Build your systems</li>
+              <li className="now"><span>02</span>Everyone calls GO</li>
+              <li><span>03</span>Team board</li>
             </ol>
             <a className="btn btn-primary" href={href('/crew')}>Form a crew</a>
           </div>

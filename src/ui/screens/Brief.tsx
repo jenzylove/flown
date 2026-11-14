@@ -73,7 +73,8 @@ export default function Brief() {
   const difficulty = useGame((s) => s.difficulty);
   const setDifficulty = useGame((s) => s.setDifficulty);
   const budgetMult = DIFFICULTY[difficulty].budgetMult;
-  const crewOpen = crew && crew.turn < crew.players.length ? crew : null;
+  const coopOpen = crew?.mode === 'coop' && mission?.coop && !mission.run?.done ? crew : null;
+  const crewOpen = coopOpen ?? (crew && crew.mode !== 'coop' && crew.turn < crew.players.length ? crew : null);
   const today = dailyBrief(new Date());
   const todayDone = runs.some((r) => r.daily && r.seed === today.seed && r.briefId === today.brief.id);
 
@@ -106,10 +107,10 @@ export default function Brief() {
           <span className="today-s">seed {today.seed}{todayDone ? ' · flown' : ''}</span>
           <svg className="today-go" viewBox="0 0 40 12" width="34" height="12" aria-hidden="true"><path d="M0 6 H38 M32 1 L38 6 L32 11" /></svg>
         </button>
-        {resumeTitle && mission?.crewIndex === undefined && (
+        {resumeTitle && mission?.crewIndex === undefined && !mission?.coop && (
           <a className="chip-link" href={href('/hangar')}>Resume {resumeTitle}</a>
         )}
-        <a className="chip-link" href={href(crewOpen ? '/crew/pass' : '/crew')}>
+        <a className="chip-link" href={href(coopOpen ? '/hangar' : crewOpen ? '/crew/pass' : '/crew')}>
           {crewOpen ? `Resume crew of ${crewOpen.players.length}` : 'Fly as a crew'}
         </a>
       </div>
@@ -126,7 +127,10 @@ export default function Brief() {
           Pips show how hard the trip is on the engine.
         </p>
         <p>Today&rsquo;s mission: everyone flying today gets the same failures in the same order. Seed {today.seed}.</p>
-        <p>Crew: 2 to 4 players on one device, one brief, the same failures for everyone. Take turns, then compare.</p>
+        <p>
+          Crew, One craft: 2 to 4 players build one spacecraft together. Each role owns its systems and its review pins, the owner of a failing system makes the call in
+          flight, and the craft launches only on a GO from everyone. Crew, Race: one craft each on the same seed, take turns, then compare.
+        </p>
         <ul className="brief-facts">
           {BRIEFS.map((b) => {
             const real = REAL_CRAFT[b.realCraft];

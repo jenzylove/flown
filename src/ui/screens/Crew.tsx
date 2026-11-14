@@ -7,6 +7,7 @@ import { useGame } from '../store';
 import type { Crew as CrewT } from '../store';
 import { go, href } from '../router';
 import { kg, usd, watts, pct, n0, two, prettyDate } from '../format';
+import { rolesFor, roleNames, pinsFor } from '../coop';
 
 const MAX = 4;
 const MIN = 2;
@@ -20,7 +21,10 @@ export default function Crew({ view }: { view: string }) {
 /* ---------- setup ---------- */
 function Setup() {
   const startCrew = useGame((s) => s.startCrew);
+  const startCoop = useGame((s) => s.startCoop);
   const crew = useGame((s) => s.crew);
+  const mission = useGame((s) => s.mission);
+  const [mode, setMode] = useState<'coop' | 'race'>('coop');
   const savedDifficulty = useGame((s) => s.difficulty);
   const [difficulty, setDifficulty] = useState<Difficulty>(savedDifficulty);
   const [names, setNames] = useState<string[]>(['', '']);
@@ -28,10 +32,18 @@ function Setup() {
   const clean = names.map((n) => n.trim());
   const dupes = new Set(clean.filter((n, i) => n && clean.findIndex((x) => x.toLowerCase() === n.toLowerCase()) !== i));
   const ready = clean.every(Boolean) && dupes.size === 0 && !!briefId;
-  const unfinished = crew && crew.turn < crew.players.length ? crew : null;
+  const coopOpen = crew?.mode === 'coop' && mission?.coop && !mission.run?.done;
+  const unfinished = crew && (crew.mode === 'coop' ? coopOpen : crew.turn < crew.players.length) ? crew : null;
+  const roles = rolesFor(names.length);
+  const pins = pinsFor(names.length);
 
   const start = () => {
     if (!ready || !briefId) return;
+    if (mode === 'coop') {
+      startCoop(clean, briefId, difficulty);
+      go('/hangar');
+      return;
+    }
     startCrew(clean, briefId, difficulty);
     go('/crew/pass');
   };
@@ -42,17 +54,28 @@ function Setup() {
         <div>
           <p className="eyebrow">Crew mode &middot; one device, {MIN} to {MAX} players</p>
           <h1 className="app-title">Fly as a crew.</h1>
-          <p className="head-line">Same brief, same seed, same failures. Take turns.</p>
+          <p className="head-line">{mode === 'coop' ? 'One craft. Each player owns a part of it. Everyone says GO.' : 'Same brief, same seed, same failures. Take turns.'}</p>
+          <div className="seg crew-mode" role="radiogroup" aria-label="Crew mode">
+            {(['coop', 'race'] as const).map((m) => (
+              <button key={m} role="radio" aria-checked={mode === m} className={'seg-btn' + (mode === m ? ' on' : '')} onClick={() => setMode(m)}>
+                {m === 'coop' ? 'One craft' : 'Race'}
+              </button>
+            ))}
+          </div>
           {unfinished && (
-            <a className="chip-link" href={href('/crew/pass')}>
+            <a className="chip-link" href={href(unfinished.mode === 'coop' ? '/hangar' : '/crew/pass')}>
               Resume the crew of {unfinished.players.map((p) => p.name).join(', ')}
             </a>
           )}
         </div>
         <More label="How crews work" className="head-more">
           <p>
-            Everyone gets the same brief and the same seed, so each real failure rolls the same dice for every craft. Take turns: build, review, fly, then pass the device.
-            The crew board ranks you at the end.
+            <b>One craft.</b> The crew builds one spacecraft on one budget. Each player owns a set of systems and can change only those. Every player marks ready,
+            each role places its own review pins, and the craft launches only when everyone calls GO. In flight, the owner of a failing system makes the call.
+          </p>
+          <p>
+            <b>Race.</b> Everyone gets the same brief and the same seed, so each real failure rolls the same dice for every craft. Take turns: build, review, fly,
+            then pass the device. The crew board ranks you at the end.
           </p>
         </More>
       </header>
@@ -72,6 +95,11 @@ function Setup() {
                 autoComplete="off"
                 onChange={(e) => setNames(names.map((x, j) => (j === i ? e.target.value : x)))}
               />
+              {mode === 'coop' && (
+                <span className="crew-role">
+                  {roleNames(roles[i] ?? [])} &middot; {pins[i]} {pins[i] === 1 ? 'pin' : 'pins'}
+                </span>
+              )}
               {names.length > MIN && (
                 <button className="link-quiet crew-x" onClick={() => setNames(names.filter((_, j) => j !== i))} aria-label={`Remove player ${i + 1}`}>
                   Remove
@@ -101,7 +129,7 @@ function Setup() {
       </section>
 
       <div className="cta-row">
-        <button className="btn btn-primary" disabled={!ready} onClick={start}>Start the crew</button>
+        <button className="btn btn-primary" disabled={!ready} onClick={start}>{mode === 'coop' ? 'Open the shared hangar' : 'Start the race'}</button>
         <a className="btn btn-ghost" href={href('/brief')}>Fly solo instead</a>
       </div>
     </div>
@@ -114,6 +142,15 @@ function Pass() {
   const begin = useGame((s) => s.beginCrewTurn);
   const endCrew = useGame((s) => s.endCrew);
   if (!crew) return <NoCrew />;
+  if (crew.mode === 'coop') {
+    return (
+      <div className="page empty-page">
+        <p className="eyebrow">Crew mode &middot; one craft</p>
+        <h1 className="page-title">This crew shares one craft.</h1>
+        <div className="cta-row"><a className="btn btn-primary" href={href('/hangar')}>Back to the hangar</a></div>
+      </div>
+    );
+  }
   if (crew.turn >= crew.players.length) {
     return (
       <div className="page empty-page">
@@ -184,6 +221,16 @@ function Board() {
     [crew],
   );
   if (!crew) return <NoCrew />;
+  if (crew.mode === 'coop') {
+    return (
+      <div className="page empty-page">
+        <p className="eyebrow">Crew board</p>
+        <h1 className="page-title">This crew flies one craft.</h1>
+        <p className="page-lede">The team board sits under the flight result.</p>
+        <div className="cta-row"><a className="btn btn-primary" href={href('/flight')}>Open the flight</a></div>
+      </div>
+    );
+  }
   if (done.length < crew.players.length) {
     return (
       <div className="page empty-page">

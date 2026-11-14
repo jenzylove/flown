@@ -17,6 +17,8 @@ import type {
   FailureAnim,
 } from './eng';
 import { isoDay, dayDiff } from './format';
+import { ownerOfGroup, pinsFor } from './coop';
+import type { Group } from './coop';
 
 /* ---------- safe storage ---------- */
 function load<T>(key: string, fallback: T): T {
@@ -53,6 +55,8 @@ export interface Mission {
   crewIndex?: number;
   /** Set when this mission answers a friend's share link. */
   challenge?: Challenge;
+  /** Set when the whole crew builds and flies this one craft together. */
+  coop?: boolean;
 }
 
 /** A friend's share link: the encoded design and seed, plus their pins, fixes and crisis picks. */
@@ -77,6 +81,25 @@ export interface Crew {
   startedAt: string;
   /** Difficulty every crew craft flies on. */
   difficulty?: Difficulty;
+  /** 'race': one craft each, ranked. 'coop': one shared craft, roles split. Old saves are races. */
+  mode?: 'race' | 'coop';
+  coop?: CoopState;
+}
+
+export interface CoopState {
+  /** Who holds the device right now. */
+  active: number;
+  ready: boolean[];
+  /** GO / NO GO poll before launch: null means not polled yet. */
+  go: (boolean | null)[];
+  /** Review item id to the player whose pin it is. */
+  pinOwner: Record<string, number>;
+  /** Crisis calls made in flight. */
+  calls: { lessonId: string; player: number; same: boolean | null }[];
+}
+
+function freshCoop(n: number): CoopState {
+  return { active: 0, ready: Array(n).fill(false), go: Array(n).fill(null), pinOwner: {}, calls: [] };
 }
 
 export interface RunRecord {
@@ -112,6 +135,11 @@ interface State {
   difficulty: Difficulty;
   setDifficulty: (d: Difficulty) => void;
   startCrew: (names: string[], briefId: string, difficulty?: Difficulty) => void;
+  startCoop: (names: string[], briefId: string, difficulty?: Difficulty) => void;
+  setActive: (i: number) => void;
+  markReady: () => void;
+  voteGo: (i: number, go: boolean) => void;
+  coopCall: (lessonId: string, player: number, same: boolean | null) => void;
   beginCrewTurn: () => void;
   endCrew: () => void;
   startChallenge: (code: string, meta: string, mode: Challenge['mode']) => boolean;
@@ -197,6 +225,55 @@ export const useGame = create<State>((set, get) => ({
     save(K.crew, crew);
   },
 
+  startCoop(names, briefId, difficulty) {
+    const crew: Crew = {
+      briefId,
+      seed: Math.floor(Math.random() * 100000),
+      players: names.map((name) => ({ name, done: false })),
+      turn: 0,
+      startedAt: new Date().toISOString(),
+      difficulty: difficulty ?? get().difficulty,
+      mode: 'coop',
+      coop: freshCoop(names.length),
+    };
+    const mission = freshMission(briefId, crew.seed, false, { coop: true }, crew.difficulty ?? 'engineer');
+    set({ crew, mission });
+    save(K.crew, crew);
+    save(K.mission, persistable(mission));
+  },
+
+  setActive(i) {
+    const c = coopCrew();
+    if (!c || i < 0 || i >= c.players.length) return;
+    patchCoop({ active: i });
+  },
+
+  markReady() {
+    const c = coopCrew();
+    if (!c?.coop) return;
+    const ready = c.coop.ready.map((r, i) => r || i === c.coop!.active);
+    const n = ready.length;
+    let active = c.coop.active;
+    for (let k = 1; k <= n; k++) {
+      const j = (c.coop.active + k) % n;
+      if (!ready[j]) { active = j; break; }
+    }
+    if (ready.every(Boolean)) active = 0;
+    patchCoop({ ready, active });
+  },
+
+  voteGo(i, go) {
+    const c = coopCrew();
+    if (!c?.coop) return;
+    patchCoop({ go: c.coop.go.map((v, j) => (j === i ? go : v)) });
+  },
+
+  coopCall(lessonId, player, same) {
+    const c = coopCrew();
+    if (!c?.coop) return;
+    patchCoop({ calls: [...c.coop.calls, { lessonId, player, same }] });
+  },
+
   beginCrewTurn() {
     const crew = get().crew;
     if (!crew || crew.turn >= crew.players.length) return;
@@ -207,7 +284,7 @@ export const useGame = create<State>((set, get) => ({
 
   endCrew() {
     const m = get().mission;
-    const mission = m && m.crewIndex !== undefined ? null : m;
+    const mission = m && (m.crewIndex !== undefined || m.coop) ? null : m;
     set({ crew: null, mission });
     save(K.crew, null);
     save(K.mission, mission ? persistable(mission) : null);
@@ -232,6 +309,7 @@ export const useGame = create<State>((set, get) => ({
   },
 
   setPart(slot, id) {
+    if (need().design.parts[slot] === id || !coopMay(slot)) return;
     patchMission({ design: { ...need().design, parts: { ...need().design.parts, [slot]: id } } });
   },
 
@@ -239,26 +317,48 @@ export const useGame = create<State>((set, get) => ({
     const d = need().design;
     const has = d.instruments.includes(id);
     if (!has && d.instruments.length >= max) return;
+    if (!coopMay('instruments')) return;
+    if (!has && d.instruments.length >= max) return;
     const instruments = has ? d.instruments.filter((x) => x !== id) : [...d.instruments, id];
     patchMission({ design: { ...d, instruments } });
   },
 
   setProcess(p, id) {
+    if (need().design.process[p] === id || !coopMay('process')) return;
     const d = need().design;
     patchMission({ design: { ...d, process: { ...d.process, [p]: id } } });
   },
 
   setLaunch(id) {
+    if (need().design.launch === id || !coopMay('launch')) return;
     patchMission({ design: { ...need().design, launch: id } });
   },
 
   setOrbit(id) {
+    if (need().design.orbit === id || !coopMay('orbit')) return;
     patchMission({ design: { ...need().design, orbit: id } });
   },
 
   toggleFlag(id) {
     const m = need();
     const on = m.flagged.includes(id);
+    const c = m.coop ? coopCrew() : null;
+    if (c?.coop) {
+      const { active, pinOwner } = c.coop;
+      const quota = pinsFor(c.players.length)[active] ?? 1;
+      const mine = m.flagged.filter((f) => (pinOwner[f] ?? 0) === active).length;
+      if (on && (pinOwner[id] ?? 0) !== active) return;
+      if (!on && (mine >= quota || m.flagged.length >= MAX_PINS)) return;
+      const next = { ...pinOwner };
+      if (on) delete next[id];
+      else next[id] = active;
+      patchCoop({ pinOwner: next, go: c.coop.go.map(() => null) });
+      patchMission({
+        flagged: on ? m.flagged.filter((x) => x !== id) : [...m.flagged, id],
+        fixed: on ? m.fixed.filter((x) => x !== id) : m.fixed,
+      });
+      return;
+    }
     if (!on && m.flagged.length >= MAX_PINS) return;
     patchMission({
       flagged: on ? m.flagged.filter((x) => x !== id) : [...m.flagged, id],
@@ -269,6 +369,8 @@ export const useGame = create<State>((set, get) => ({
   setFix(id, on) {
     const m = need();
     const fixed = on ? Array.from(new Set([...m.fixed, id])) : m.fixed.filter((x) => x !== id);
+    const c = m.coop ? coopCrew() : null;
+    if (c?.coop) patchCoop({ go: c.coop.go.map(() => null) });
     patchMission({ fixed });
   },
 
@@ -355,6 +457,8 @@ export const useGame = create<State>((set, get) => ({
       }
     }
     for (const id of [...(m.run?.result?.triggered ?? []), ...(m.run?.result?.missed ?? [])]) lessonIds.add(id);
+    const c = m.coop ? coopCrew() : null;
+    if (c) patchCoop({ ...freshCoop(c.players.length) });
     patchMission({
       run: null,
       recorded: false,
@@ -378,6 +482,29 @@ function patchMission(p: Partial<Mission>) {
   const mission = { ...m, ...p };
   useGame.setState({ mission });
   save(K.mission, persistable(mission));
+}
+
+/** The crew when the current mission is a one craft crew game. */
+export function coopCrew(): Crew | null {
+  const { mission, crew } = useGame.getState();
+  return mission?.coop && crew?.mode === 'coop' && crew.coop && crew.briefId === mission.briefId ? crew : null;
+}
+
+function patchCoop(p: Partial<CoopState>) {
+  const crew = useGame.getState().crew;
+  if (!crew?.coop) return;
+  const next: Crew = { ...crew, coop: { ...crew.coop, ...p } };
+  useGame.setState({ crew: next });
+  save(K.crew, next);
+}
+
+/** In a one craft game only the owner of a group may change it, and any change clears every ready and GO. */
+function coopMay(g: Group): boolean {
+  const c = coopCrew();
+  if (!c?.coop) return true;
+  if (ownerOfGroup(c.players.length, g) !== c.coop.active) return false;
+  patchCoop({ ready: c.coop.ready.map(() => false), go: c.coop.go.map(() => null) });
+  return true;
 }
 
 /** The engine keeps live flight state in memory, so only finished runs survive a reload. */
