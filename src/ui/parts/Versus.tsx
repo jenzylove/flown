@@ -102,7 +102,7 @@ export function ComparePanel({ mission, design, result }: { mission: Mission; de
           </table>
         </div>
         <p className="vs-note">
-          Score is science percent, plus 15 for each real failure caught at review, minus 5 for each one missed, minus 5 for each pin on something with no real risk for that craft.
+          Score is science percent, plus 10 for each real failure caught at review, minus 5 for each one missed, minus 5 for each pin on something with no real risk for that craft.
           {!fr && ' The link carried only the design, so the friend column lists the failures that come for that craft on this seed before any pins.'}
         </p>
       </More>

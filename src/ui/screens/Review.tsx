@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { reviewItems, evaluate, applyFixes, briefById, MAX_PINS } from '../eng';
+import { reviewItems, evaluate, applyFixes, briefById, MAX_PINS, expectedScience } from '../eng';
 import type { SlotId } from '../eng';
 import { useGame } from '../store';
 import { Craft3D } from '../Shell';
@@ -148,7 +148,7 @@ export default function Review() {
           <ul className="rv-list">{procItems.map(renderItem)}</ul>
 
           <More label="Resources after fixes" className="rv-more">
-            <Rail report={rep} compact />
+            <Rail report={rep} compact science={expectedScience(applyFixes(mission.design, mission.fixed))} />
           </More>
           {rep.blockers.length > 0 && (
             <ul className="blockers">

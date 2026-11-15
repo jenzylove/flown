@@ -58,7 +58,7 @@ export default function ColdOpen() {
         <p className="hero-problem">
           <span className="hp-num">57%</span>
           <span>
-            Only 57% of NASA flight project managers used NASA&rsquo;s own lessons database. Flown puts those lessons in your hands before launch.{' '}
+            In a 2012 survey, only 57% of NASA flight project managers (16 of 28) said they used NASA&rsquo;s own lessons database. Flown puts those lessons in your hands before launch.{' '}
             <a href={IG_URL} target="_blank" rel="noreferrer">NASA OIG, IG 12 012, 2012</a>
           </span>
         </p>

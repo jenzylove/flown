@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 import {
-  PARTS, INSTRUMENTS, PROCESS_OPTIONS, SLOTS, LAUNCH_OPTIONS, REAL_CRAFT, evaluate, briefById, lessonById,
+  PARTS, INSTRUMENTS, PROCESS_OPTIONS, SLOTS, LAUNCH_OPTIONS, REAL_CRAFT, evaluate, expectedScience, briefById, lessonById,
   launchOf, orbitOf, orbitOptionsFor, difficultyOf,
 } from '../eng';
 import type { Brief, ProcessId, SlotId } from '../eng';
@@ -173,7 +173,7 @@ export default function Hangar({ refly }: { refly?: boolean }) {
             <span className="frame-corner tl" /><span className="frame-corner tr" /><span className="frame-corner bl" /><span className="frame-corner br" />
             <span className="frame-label">{brief.target} &middot; seed {mission.seed}</span>
           </div>
-          <Rail report={report} />
+          <Rail report={report} science={expectedScience(mission.design)} />
         </div>
 
         <div className="hangar-right">

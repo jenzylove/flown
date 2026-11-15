@@ -41,7 +41,7 @@ export default function Proof() {
           On every flight the engine decides, from the seed and your design, which real failures would strike. A failure you pinned at the pre launch
           review counts as caught. One you did not pin counts as missed. You get {MAX_PINS} pins per review, and a pin on something that carries no
           real risk for your craft is a wrong pin: it counts against you, so pinning everything never pays. The rate on your lesson sky adds up every
-          flight you have flown on this device. Crew and friend scores use the same idea: science percent, plus 15 for each failure caught, minus 5
+          flight you have flown on this device. Crew and friend scores use the same idea: science percent, plus 10 for each failure caught, minus 5
           for each one missed, minus 5 for each wrong pin.
         </p>
       </section>
@@ -87,7 +87,7 @@ export default function Proof() {
         <ul className="credits">
           <li>Spacecraft mass, power, launch vehicle and dates: <a href="https://nssdc.gsfc.nasa.gov/nmc/" target="_blank" rel="noreferrer">NASA Space Science Data Coordinated Archive (NSSDCA)</a>.</li>
           <li>Lessons: <a href="https://llis.nasa.gov/" target="_blank" rel="noreferrer">NASA Lessons Learned Information System (LLIS)</a> and the mishap reports and articles linked on each lesson.</li>
-          <li>The 57% figure: <a href={IG_URL} target="_blank" rel="noreferrer">NASA Office of Inspector General, report IG 12 012 (2012)</a>.</li>
+          <li>The 57% figure (16 of 28 surveyed project managers): <a href={IG_URL} target="_blank" rel="noreferrer">NASA Office of Inspector General, report IG 12 012 (2012)</a>.</li>
           <li>Spacecraft visuals are drawn in code from simple shapes. No generated images, no NASA logos or insignia.</li>
           <li>Built with help from Claude Code, an AI coding assistant, for code, tests and gathering the public sources. Every lesson keeps its links so each fact can be checked.</li>
           <li>Type: Instrument Serif, Martian Mono and Schibsted Grotesk, via Google Fonts, under the SIL Open Font License 1.1.</li>

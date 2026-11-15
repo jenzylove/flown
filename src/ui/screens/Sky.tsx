@@ -232,7 +232,7 @@ export default function Sky() {
           ) : (
             <>
               <p className="best-note">
-                Top five per brief, kept in this browser and nowhere else. Score is science percent, plus 15 for each real failure caught at review, minus 5 for each one missed, minus 5 for each pin on something with no real risk for that craft.
+                Top five per brief, kept in this browser and nowhere else. Score is science percent, plus 10 for each real failure caught at review, minus 5 for each one missed, minus 5 for each pin on something with no real risk for that craft.
               </p>
               <div className="best-grid">
                 {boards.map(({ brief, top }) => (

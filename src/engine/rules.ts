@@ -47,15 +47,15 @@ const longMission = (c: Ctx) => c.brief.missionDays >= 1200;
 export const REVIEW_FIXES: Record<string, ReviewItem['fix']> = {
   'part:power': { label: 'Test the panels on the assembled craft and add a spare power path', costM: 10, scheduleDays: 20 },
   'part:battery': { label: 'Size the battery for the longest shadow and check safe mode pointing for heat', costM: 6, scheduleDays: 10 },
-  'part:antenna': { label: 'Flight like deployment test of the dish, plus a backup plan for data', costM: 12, scheduleDays: 25 },
+  'part:antenna': { label: 'Flight like deployment test of the dish, plus a backup plan for data', costM: 18, scheduleDays: 40 },
   'part:attitude': { label: 'Add a spare and write a plan for losing wheels', costM: 8, scheduleDays: 10 },
   'part:propulsion': { label: 'Redundant valves and a retest of every pressure line', costM: 12, scheduleDays: 20 },
   'part:computer': { label: 'Keep workload margin and test the switch to the backup brain', costM: 6, scheduleDays: 15 },
   'part:thermal': { label: 'Run a thermal check on every fault mode', costM: 5, scheduleDays: 10 },
   'part:instruments': { label: 'Cross check instrument tests with an independent tool', costM: 8, scheduleDays: 20 },
-  'process:interfaceCheck': { label: 'Push real data through every team, checking units both ways', costM: 8, scheduleDays: 30 },
-  'process:deployTest': { label: 'Unfold every moving part on the finished craft', costM: 10, scheduleDays: 30 },
-  'process:faultSim': { label: 'Simulate glitches, odd timings and overloads before launch', costM: 8, scheduleDays: 30 },
+  'process:interfaceCheck': { label: 'Push real data through every team, checking units both ways', costM: 18, scheduleDays: 60 },
+  'process:deployTest': { label: 'Unfold every moving part on the finished craft', costM: 22, scheduleDays: 50 },
+  'process:faultSim': { label: 'Simulate glitches, odd timings and overloads before launch', costM: 22, scheduleDays: 55 },
   'process:fuelMargin': { label: 'Carry a reserve and plan a use for leftover tank gas', costM: 5, scheduleDays: 0 },
 };
 

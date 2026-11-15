@@ -266,7 +266,7 @@ function Board() {
         </div>
         <More label="How the score works" className="head-more">
           <p>
-            Score is science percent, plus 15 for each real failure caught at review, minus 5 for each one missed, minus 5 for each pin on something with no real risk for that craft. One seed for everyone, so each real failure rolled the same dice for every craft. Only the craft and the calls differed.
+            Score is science percent, plus 10 for each real failure caught at review, minus 5 for each one missed, minus 5 for each pin on something with no real risk for that craft. One seed for everyone, so each real failure rolled the same dice for every craft. Only the craft and the calls differed.
           </p>
         </More>
       </header>

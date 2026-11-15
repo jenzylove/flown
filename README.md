@@ -6,7 +6,7 @@
 
 **Design a space mission. Survive real mission failures.**
 
-![NASA data](https://img.shields.io/badge/data-NASA%20NSSDCA%20%2B%20LLIS-0b0d12) ![Real failures](https://img.shields.io/badge/real%20failures-38%20sourced-e8641b) ![Answer key](https://img.shields.io/badge/answer%20key-27%2F27-2b7a4b) ![License](https://img.shields.io/badge/license-MIT-lightgrey)
+![NASA data](https://img.shields.io/badge/data-NASA%20NSSDCA%20%2B%20LLIS-0b0d12) ![Real lessons](https://img.shields.io/badge/real%20lessons-38%20sourced-e8641b) ![Answer key](https://img.shields.io/badge/answer%20key-27%2F27-2b7a4b) ![License](https://img.shields.io/badge/license-MIT-lightgrey)
 
 <img src="docs/hero.png" alt="Flown: the landing page plays a real failure and its fix" width="900" />
 
@@ -14,7 +14,7 @@
 
 Live at **[flown-eight.vercel.app](https://flown-eight.vercel.app)**. Free, no sign up. Watch the **[30 second demo](https://youtu.be/y-Rg446MdWQ)**. Built for NASA Space Apps 2026, challenge: **Space Mission Design Game**.
 
-NASA writes down what went wrong on every mission. In 2012 its Inspector General found only **57%** of its own flight project managers used those lessons at all ([IG 12 012](https://www.oversight.gov/sites/default/files/oig-reports/IG-12-012.pdf)). Students meet spacecraft one part at a time, and the people who will build the next ones learn the hard way. Of university small satellites that reached orbit in Michael Swartwout's study, about 30% were dead on arrival and another 15% failed early ([The Space Review](https://thespacereview.com/article/3047/1)).
+NASA writes down what went wrong on every mission. In 2012 its Inspector General found that only **57%** of the flight project managers it surveyed (16 of 28) used NASA's lessons database ([IG 12 012](https://www.oversight.gov/sites/default/files/oig-reports/IG-12-012.pdf)). Students meet spacecraft one part at a time, and the people who will build the next ones learn the hard way. Of university small satellites that reached orbit in Michael Swartwout's study, about 30% were dead on arrival and another 15% failed early ([The Space Review](https://thespacereview.com/article/3047/1)).
 
 Flown turns that record into a game you learn by losing.
 
@@ -40,7 +40,8 @@ Flown turns that record into a game you learn by losing.
 | Every failure is real | All 38 lessons carry public sources, 98 links in total, listed on the [proof page](https://flown-eight.vercel.app/#/proof) and in [`lessons.json`](src/data/lessons.json) |
 | Real spacecraft facts | Mass, power, rocket and launch date read from NASA's NSSDCA catalog by [`fetch_nssdca.py`](scripts/fetch_nssdca.py) |
 | Flown's mass rules are close to real craft | Compared with NSSDCA for each mission: errors up to 37%, every row published on the proof page |
-| The app works | 56 tests, plus a browser run of all six missions, crew mode and share links at desktop and phone width with zero console errors |
+| The score rewards good engineering | [Incentive tests](src/engine/__tests__/incentives.test.ts) fly hundreds of seeds: a fuller payload returns more science, a lander battery that cannot last the night costs science, and testing in the hangar is cheaper and faster than buying the same fix late at review |
+| The app works | 61 tests, plus a browser run of all six missions, crew mode and share links at desktop and phone width with zero console errors |
 
 **Real:** the 38 failures, the crises and NASA's decisions, spacecraft facts from NSSDCA, budgets close to real mission costs (labelled "not a cap").
 **Simplified for play:** part values, failure chances and dry mass limits, said so on screen. Firing Juno's engine anyway is a seeded gamble, because nobody knows what would have happened.

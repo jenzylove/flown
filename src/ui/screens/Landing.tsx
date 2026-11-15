@@ -718,7 +718,7 @@ export default function Landing() {
       <section id="problem" className="lp-sec lp-stakes" aria-labelledby="problem-h">
         <p className="lp-stakes-k" data-reveal><span className="lp-sec-no">01</span> The problem</p>
         <h2 id="problem-h" className="lp-stakes-t" data-reveal>
-          NASA keeps a lesson for every failure. Only <span className="alarm">57%</span> of its own flight project managers used them.
+          NASA keeps a lesson for every failure. Only <span className="alarm">57%</span> of the flight project managers it surveyed used them.
         </h2>
         <a className="cite lp-stakes-cite" href={IG_URL} target="_blank" rel="noreferrer" data-reveal>NASA OIG report IG 12 012, 2012</a>
         <p className="lp-stakes-2" data-reveal>
@@ -753,7 +753,7 @@ export default function Landing() {
         id="failures"
         no="04"
         kicker="Every failure is real"
-        title={<>{LESSONS.length} real failures. <em>Not one made up.</em></>}
+        title={<>{LESSONS.length} real lessons. <em>Not one made up.</em></>}
         className="lp-sec-wide"
       >
         <div data-reveal>

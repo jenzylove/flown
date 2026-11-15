@@ -95,8 +95,8 @@ describe('share', () => {
   });
   it('rejects junk', () => { expect(decodeShare('x.y')).toBeNull(); expect(decodeShare(encodeShare(defaultDesign('pluto'), 1).replace('rtg', 'wheels_3'))).toBeNull(); });
   it('crew score rewards catches', () => {
-    expect(crewScore({ sciencePct: 50, caught: ['a'], missed: [], falseFlags: [] })).toBe(65);
-    expect(crewScore({ sciencePct: 50, caught: ['a'], missed: [], falseFlags: ['x', 'y'] })).toBe(55);
+    expect(crewScore({ sciencePct: 50, caught: ['a'], missed: [], falseFlags: [] })).toBe(60);
+    expect(crewScore({ sciencePct: 50, caught: ['a'], missed: [], falseFlags: ['x', 'y'] })).toBe(50);
   });
 });
 

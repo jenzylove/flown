@@ -39,7 +39,7 @@ export default function About() {
             reports and the articles linked on each case file.
           </li>
           <li>
-            The 57% figure: <a href={IG_URL} target="_blank" rel="noreferrer">NASA Office of Inspector General, report IG 12 012</a> (2012).
+            The 57% figure (16 of 28 surveyed project managers): <a href={IG_URL} target="_blank" rel="noreferrer">NASA Office of Inspector General, report IG 12 012</a> (2012).
           </li>
           <li>Part values, failure chances and dry mass limits are simplified for play. The <a href={href('/proof')}>proof page</a> shows how far off they are.</li>
         </ul>

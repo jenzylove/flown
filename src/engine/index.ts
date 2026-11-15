@@ -54,14 +54,14 @@ export function roll(seed: number, key: string) {
 }
 
 // ---------- design ----------
-export function defaultDesign(briefId: string): Design {
+function baseDesign(briefId: string): Design {
   const b = briefById(briefId);
   const far = b.sunFactor < 0.05;
   return {
     briefId,
     parts: {
       power: far ? (b.sunFactor < 0.01 ? 'rtg' : 'panel_wings') : 'panel_large',
-      battery: 'battery_m',
+      battery: b.kind === 'lander' ? 'battery_l' : 'battery_m',
       antenna: 'hga_fixed',
       attitude: 'wheels_4',
       propulsion: b.deltaVNeed === 'high' ? 'biprop' : b.deltaVNeed === 'medium' ? 'mono_large' : 'mono_small',
@@ -75,6 +75,15 @@ export function defaultDesign(briefId: string): Design {
     orbit: ORBIT_OPTIONS.find(o => o.kind === b.kind)!.id,
     difficulty: 'engineer',
   };
+}
+
+/** The starting design carries the real mission's payload when it fits, so a careful player can reach full science. */
+export function defaultDesign(briefId: string): Design {
+  const d = baseDesign(briefId);
+  const ref = REFERENCE_DESIGNS[briefId];
+  if (!ref) return d;
+  const withRef = { ...d, instruments: [...ref.instruments] };
+  return evaluate(withRef).blockers.length === 0 ? withRef : d;
 }
 
 export function evaluate(design: Design): BudgetReport {
@@ -131,7 +140,7 @@ export function evaluate(design: Design): BudgetReport {
   if (design.instruments.includes('seismometer') && b.kind !== 'lander') blockers.push('A seismometer only works on the ground.');
   if (design.instruments.includes('telescope') && b.kind === 'lander') blockers.push('A space telescope does not belong on a lander.');
   if (dataMbDay > downlinkMbDay) warnings.push(`Your instruments make ${dataMbDay} Mb a day but you can send home ${downlinkMbDay}. Some science will never reach Earth.`);
-  if (eclipseHours > 0 && batteryHours < eclipseHours) warnings.push(`The battery lasts ${batteryHours} h; the shadow lasts ${eclipseHours} h.`);
+  if (eclipseHours > 0 && batteryHours < eclipseHours) warnings.push(`The battery lasts ${batteryHours} h; the ${b.kind === 'lander' ? 'night' : 'shadow'} lasts ${eclipseHours} h. Instruments will go dark for part of every ${b.kind === 'lander' ? 'night' : 'shadow'}, and that costs science.`);
   return {
     massKg, massLimitKg, costM, budgetM, powerGenW, powerUseW,
     batteryHours, eclipseHours, dataMbDay, downlinkMbDay, scheduleDays, blockers, warnings,
@@ -306,21 +315,66 @@ export function nasaChoice(lessonId: string) {
   return r?.crisis ? { optionId: r.crisis.nasaChoice, text: r.crisis.nasaLabel } : null;
 }
 
+/** Science points that reach Earth. The team sends the most valuable data per megabit first. */
+export function scienceReturn(design: Design) {
+  const b = briefById(design.briefId);
+  const rep = evaluate(design);
+  const sendDays = b.kind === 'flyby' ? 30 : 1;
+  let room = rep.downlinkMbDay * sendDays;
+  let delivered = 0, total = 0;
+  const inst = design.instruments.map(i => instrumentById(i)!).filter(Boolean)
+    .sort((a, z) => z.science / Math.max(1, z.dataMbDay) - a.science / Math.max(1, a.dataMbDay));
+  for (const i of inst) {
+    total += i.science;
+    const sent = Math.min(i.dataMbDay, room);
+    room -= sent;
+    delivered += i.science * (i.dataMbDay === 0 ? 1 : sent / i.dataMbDay);
+  }
+  return { delivered, total };
+}
+
+/** Science the design should send home if nothing breaks, as a percent of full marks. */
+export function expectedScience(design: Design) {
+  const goal = scienceGoal(design.briefId);
+  return Math.min(100, Math.round(100 * Math.min(1, scienceReturn(design).delivered / goal) * powerFactor(design) * orbitOf(design).scienceMult));
+}
+
+/** Full marks = what a sound starting design with the real mission's payload sends home. */
+export function scienceGoal(briefId: string) {
+  return Math.max(1, scienceReturn(defaultDesign(briefId)).delivered);
+}
+
+/** A battery shorter than the shadow (or a lander's night) switches the instruments off for the rest of it. */
+export function powerFactor(design: Design, rep = evaluate(design)) {
+  if (rep.eclipseHours <= 0 || (design.fixes ?? []).includes('part:battery')) return 1;
+  const b = briefById(design.briefId);
+  const periodH = b.kind === 'lander' ? 24.6 : b.target === 'Mercury' ? 12 : 2;
+  const shadow = rep.eclipseHours / periodH;
+  const cover = Math.min(1, rep.batteryHours / rep.eclipseHours);
+  const k = b.kind === 'lander' ? 1.6 : 1;
+  return 1 - Math.min(0.7, k * shadow * (1 - cover));
+}
+
 function finish(design: Design, st: Internal): FlightResult {
   const b = briefById(design.briefId);
   const rep = evaluate(design);
   // A flyby gathers data for days and sends it home for months, so its downlink gets that time.
   const sendDays = b.kind === 'flyby' ? 30 : 1;
   const dataRatio = rep.dataMbDay === 0 ? 0 : Math.min(1, (rep.downlinkMbDay * sendDays) / rep.dataMbDay);
+  const sci = scienceReturn(design);
+  const power = powerFactor(design, rep);
   let frac = 1;
   if (st.lostAtDay !== null) {
     frac = st.lostAtDay <= b.arrivalDay ? 0 : (st.lostAtDay - b.arrivalDay) / Math.max(1, b.missionDays - b.arrivalDay);
   }
   const mult = st.mults.reduce((a, m) => a * m, 1);
   const orb = orbitOf(design);
-  const sciencePct = Math.min(100, Math.round(100 * dataRatio * mult * frac * orb.scienceMult));
+  const goal = scienceGoal(b.id);
+  const sciencePct = Math.min(100, Math.round(100 * Math.min(1, sci.delivered / goal) * power * mult * frac * orb.scienceMult));
   const notes: string[] = [];
-  if (dataRatio < 0.995) notes.push(`Your antenna could send home ${rep.downlinkMbDay * sendDays} Mb for every ${rep.dataMbDay} Mb your instruments made, so ${Math.round(100 * (1 - dataRatio))}% of the data never reached Earth.`);
+  notes.push(`Your instruments returned ${Math.round(sci.delivered)} science points. Full marks for this brief is ${Math.round(goal)}${sci.delivered >= goal ? ', so you matched it' : ''}.`);
+  if (dataRatio < 0.995) notes.push(`Your antenna could send home ${rep.downlinkMbDay * sendDays} Mb for every ${rep.dataMbDay} Mb your instruments made, so ${Math.round(100 * (1 - dataRatio))}% of the data never reached Earth. The team sent the most valuable data first.`);
+  if (power < 1) notes.push(`Your battery lasts ${rep.batteryHours} h but each ${b.kind === 'lander' ? 'night' : 'shadow'} lasts ${rep.eclipseHours} h, so the instruments went dark for part of every one and ${Math.round(100 * (1 - power))}% of the science was lost.`);
   if (orb.scienceMult !== 1) notes.push(`Your ${orb.kind === 'lander' ? 'landing site' : orb.kind === 'flyby' ? 'pass' : 'orbit'}, ${orb.name.toLowerCase()}, ${orb.scienceMult > 1 ? 'added' : 'cost'} ${Math.abs(Math.round(100 * (orb.scienceMult - 1)))}% science.`);
   if (st.mults.some(m => m < 1)) notes.push(`Real failures and your crisis calls cut the science to ${Math.round(100 * mult)}% of what was possible.`);
   if (st.lostAtDay !== null) notes.push(st.lostAtDay <= b.arrivalDay ? 'The craft was lost before its science began.' : `The craft was lost on day ${st.lostAtDay}, ${Math.round(100 * frac)}% of the way through the science phase.`);
@@ -420,5 +474,5 @@ export function decodeShare(code: string): { design: Design; seed: number } | nu
 
 /** Crew score: science that came home, plus a bonus for each real failure caught before launch. */
 export function crewScore(r: Pick<FlightResult, 'sciencePct' | 'caught' | 'missed'> & { falseFlags?: string[] }) {
-  return r.sciencePct + 15 * r.caught.length - 5 * r.missed.length - 5 * (r.falseFlags?.length ?? 0);
+  return r.sciencePct + 10 * r.caught.length - 5 * r.missed.length - 5 * (r.falseFlags?.length ?? 0);
 }
