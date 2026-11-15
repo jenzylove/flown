@@ -1,5 +1,7 @@
 {
   "name": "flown",
+  "description": "Flown: design a space mission, survive real mission failures. NASA Space Apps 2026.",
+  "aiAssistance": "Code, tests and lesson source gathering assisted by Claude Code (AI). Lesson facts checked against the source links in src/data/lessons.json.",
   "private": true,
   "version": "0.0.0",
   "type": "module",
