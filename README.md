@@ -12,7 +12,7 @@
 
 </div>
 
-Live at **[flown-eight.vercel.app](https://flown-eight.vercel.app)**. Free, no sign up. Built for NASA Space Apps 2026, challenge: **Space Mission Design Game**.
+Live at **[flown-eight.vercel.app](https://flown-eight.vercel.app)**. Free, no sign up. Watch the **[30 second demo](https://youtu.be/EjILc33DvO8)**. Built for NASA Space Apps 2026, challenge: **Space Mission Design Game**.
 
 NASA writes down what went wrong on every mission. In 2012 its Inspector General found only **57%** of its own flight project managers used those lessons at all ([IG 12 012](https://www.oversight.gov/sites/default/files/oig-reports/IG-12-012.pdf)). Students meet spacecraft one part at a time, and the people who will build the next ones learn the hard way. Of university small satellites that reached orbit in Michael Swartwout's study, about 30% were dead on arrival and another 15% failed early ([The Space Review](https://thespacereview.com/article/3047/1)).
 
